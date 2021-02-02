@@ -301,7 +301,7 @@ ax4.set_xlabel('false positive rate')
 ax4.set_ylabel('true positive rate')
 ax4.set_title('udsg- tagging')
 ax1.get_legend().remove(), ax2.get_legend().remove(), ax3.get_legend().remove()
-ax4.legend(['Classifier','DeepCSV'],loc='lower right')
+ax4.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
 fig.suptitle(f'ROCs for b, bb, c and light jets\n After {at_epoch} epochs, evaluated on {len_test} jets')
 fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_roc.png', bbox_inches='tight', dpi=300)
 gc.collect(2)
@@ -363,4 +363,3 @@ plt.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting'
 plt.xlim(0,0.1)
 plt.ylim(0.4,0.9)
 fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_roc_BvsUDSG.png', bbox_inches='tight', dpi=300)
-
