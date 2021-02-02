@@ -319,7 +319,7 @@ def apply_noise(magn=[1],offset=[0]):
     #plt.plot([0.1,1.01],[0.9,0.735],'--',color='grey')
     #plt.plot([0,0.3],[0.4,0.0],'--',color='grey')
     
-    for i in range(len(magn)):
+    for i in range(len(magn)*3):
         plt.plot(fprl[i],tprl[i],colormapping[i])
     
     #ax = plt.axes([.37, .16, .5, .5])
@@ -330,12 +330,13 @@ def apply_noise(magn=[1],offset=[0]):
     #plt.ylim(0.4,0.9)
     
     sig = magn[-1]
+    sigm = str(sig).replace('.','')
     
     legend = ['undisturbed, no weighting', 'undisturbed, 1 - rel. freq. weighting', 'undisturbed, 1/rel. freq. weighting', 
               f'$\sigma={sig}$, no weighting', f'$\sigma={sig}$, 1 - rel. freq. weighting', f'$\sigma={sig}$, 1/rel. freq. weighting'] 
     plt.legend(legend)
     
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_noise_{sig}.png', bbox_inches='tight', dpi=300)
+    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_noise_{sigm}.png', bbox_inches='tight', dpi=300)
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
