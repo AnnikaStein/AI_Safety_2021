@@ -8,7 +8,7 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=HISROC70
+#SBATCH --job-name=HISROCComp1
 
 #SBATCH --output=output.%J.txt
 
@@ -31,4 +31,3 @@ cd /home/um106329/aisafety
 source ~/miniconda3/bin/activate
 conda activate my-env
 python3 eval_hist_roc_weighted.py
-
