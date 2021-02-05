@@ -8,7 +8,7 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=40COM005
+#SBATCH --job-name=40COM001_0
 
 #SBATCH --output=output.%J.txt
 
@@ -31,4 +31,3 @@ module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
 python3 compare_weighted.py
-
