@@ -8,11 +8,11 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=HISROCComp1
+#SBATCH --job-name=EVALComp1
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=21:10:00
+#SBATCH --time=04:10:00
 
 #SBATCH --account=rwth0583
 
