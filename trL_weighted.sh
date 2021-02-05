@@ -8,11 +8,11 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=TRGPU_none
+#SBATCH --job-name=TRGPU_new
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=16:10:00
+#SBATCH --time=9:10:00
 
 #SBATCH --account=rwth0583
 
@@ -31,4 +31,3 @@ module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
 python3 trL_weighted.py
-
