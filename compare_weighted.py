@@ -18,7 +18,9 @@ plt.style.use(hep.cms.style.ROOT)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-epsilon = 0.05
+method = 0
+
+epsilon = 0.01
 
 at_epoch = 40
 
@@ -29,17 +31,19 @@ with open(f"/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/eps
     print(f'Do comparison plots at epoch {at_epoch} with epsilon={epsilon}', file=text_file)
 print(f'Do comparison plots at epoch {at_epoch} with epsilon={epsilon}')
 
-# as calculated in dataset_info.ipynb
-allweights = [0.9393934969162745, 0.9709644530642717, 0.8684253665882813, 0.2212166834311725]
-class_weights = torch.FloatTensor(allweights).to(device)
-
-criterion = nn.CrossEntropyLoss(weight=class_weights)
 
 
-NUM_DATASETS = 200
+
+'''
+
+    Predictions: Without weighting
+    
+'''
+criterion0 = nn.CrossEntropyLoss()
 
 
-model = nn.Sequential(nn.Linear(67, 100),
+
+model0 = nn.Sequential(nn.Linear(67, 100),
                       nn.ReLU(),
                       nn.Dropout(0.1),
                       nn.Linear(100, 100),
@@ -56,10 +60,120 @@ model = nn.Sequential(nn.Linear(67, 100),
                       nn.Linear(100, 4),
                       nn.Softmax(dim=1))
 
-checkpoint = torch.load(f'/home/um106329/aisafety/models/weighted/%d_full_files_{at_epoch}_epochs_v13_GPU_weighted.pt' % NUM_DATASETS)
-model.load_state_dict(checkpoint["model_state_dict"])
 
-model.to(device)
+
+checkpoint0 = torch.load(f'/home/um106329/aisafety/models/weighted/%d_full_files_{at_epoch}_epochs_v13_GPU_weighted_as_is.pt' % NUM_DATASETS, map_location=torch.device(device))
+model0.load_state_dict(checkpoint0["model_state_dict"])
+
+model0.to(device)
+
+
+
+
+#evaluate network on inputs
+model0.eval()
+#predictions_as_is = model0(test_inputs).detach().numpy()
+#print('predictions without weighting done')
+
+
+
+'''
+
+    Predictions: With first weighting method
+    
+'''
+# as calculated in dataset_info.ipynb
+allweights1 = [0.9393934969162745, 0.9709644530642717, 0.8684253665882813, 0.2212166834311725]
+class_weights1 = torch.FloatTensor(allweights1).to(device)
+
+criterion1 = nn.CrossEntropyLoss(weight=class_weights1)
+
+
+
+model1 = nn.Sequential(nn.Linear(67, 100),
+                      nn.ReLU(),
+                      nn.Dropout(0.1),
+                      nn.Linear(100, 100),
+                      nn.ReLU(),
+                      nn.Dropout(0.1),
+                      nn.Linear(100, 100),
+                      nn.ReLU(),
+                      nn.Dropout(0.1),
+                      nn.Linear(100, 100),
+                      nn.ReLU(),
+                      nn.Dropout(0.1),
+                      nn.Linear(100, 100),
+                      nn.ReLU(),
+                      nn.Linear(100, 4),
+                      nn.Softmax(dim=1))
+
+
+
+checkpoint1 = torch.load(f'/home/um106329/aisafety/models/weighted/%d_full_files_{at_epoch}_epochs_v13_GPU_weighted.pt' % NUM_DATASETS, map_location=torch.device(device))
+model1.load_state_dict(checkpoint1["model_state_dict"])
+
+model1.to(device)
+
+
+
+#evaluate network on inputs
+model1.eval()
+#predictions = model1(test_inputs).detach().numpy()
+#print('predictions with first weighting method done')
+
+
+
+'''
+
+    Predictions: With new weighting method
+    
+'''
+
+# as calculated in dataset_info.ipynb
+allweights2 = [0.27580367992004956, 0.5756907770526237, 0.1270419391956182, 0.021463603831708488]
+class_weights2 = torch.FloatTensor(allweights2).to(device)
+
+criterion2 = nn.CrossEntropyLoss(weight=class_weights2)
+
+
+
+model2 = nn.Sequential(nn.Linear(67, 100),
+                      nn.ReLU(),
+                      nn.Dropout(0.1),
+                      nn.Linear(100, 100),
+                      nn.ReLU(),
+                      nn.Dropout(0.1),
+                      nn.Linear(100, 100),
+                      nn.ReLU(),
+                      nn.Dropout(0.1),
+                      nn.Linear(100, 100),
+                      nn.ReLU(),
+                      nn.Dropout(0.1),
+                      nn.Linear(100, 100),
+                      nn.ReLU(),
+                      nn.Linear(100, 4),
+                      nn.Softmax(dim=1))
+
+
+
+checkpoint2 = torch.load(f'/home/um106329/aisafety/models/weighted/%d_full_files_{at_epoch}_epochs_v13_GPU_weighted_new.pt' % NUM_DATASETS, map_location=torch.device(device))
+model2.load_state_dict(checkpoint2["model_state_dict"])
+
+model2.to(device)
+
+
+
+
+#evaluate network on inputs
+model2.eval()
+#predictions_new = model2(test_inputs).detach().numpy()
+#print('predictions with new weighting method done')
+
+
+
+
+
+
 
 # scalers
 scalers_file_paths = ['/work/um106329/MA/cleaned/preprocessed/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
@@ -164,10 +278,9 @@ display_names = ['Jet $\eta$',
 
 
 
-#evaluate network on inputs
-model.eval()
 
-def fgsm_attack(epsilon=1e-1,sample=None,targets=None,reduced=True, scalers=None):
+
+def fgsm_attack(epsilon=1e-1,sample=None,targets=None,reduced=True, scalers=None, model=method):
     xadv = sample.clone().detach()
     
     # calculate the gradient of the model w.r.t. the *input* tensor:
@@ -175,10 +288,18 @@ def fgsm_attack(epsilon=1e-1,sample=None,targets=None,reduced=True, scalers=None
     xadv.requires_grad = True
     
     # then we just do the forward and backwards pass as usual:
-    preds = model(xadv)
-    loss = criterion(preds, targets).mean()
-    
-    model.zero_grad()
+    if model == 0:
+        preds = model0(xadv)
+        loss = criterion0(preds, targets.long()).mean()
+        model0.zero_grad()
+    elif model == 1:
+        preds = model1(xadv)
+        loss = criterion1(preds, targets.long()).mean()
+        model1.zero_grad()
+    else:
+        preds = model2(xadv)
+        loss = criterion2(preds, targets.long()).mean()
+        model2.zero_grad()
     loss.backward()
     
     with torch.no_grad():
@@ -228,7 +349,7 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         #print(f'percentage of default -1 values for jet variables:\t{np.sum(abs(scalers[41].inverse_transform(all_inputs[:,41].cpu() + 1.0)) < 0.01)/len(all_inputs[:,41].cpu())*100}%')
         if s > 0:
             x = np.concatenate((x, scalers[prop].inverse_transform(all_inputs[:][:,prop].cpu())))
-            xadv = np.concatenate((xadv, scalers[prop].inverse_transform(fgsm_attack(epsilon,all_inputs,all_targets,reduced=reduced, scalers=scalers)[:,prop].cpu())))
+            xadv = np.concatenate((xadv, scalers[prop].inverse_transform(fgsm_attack(epsilon,all_inputs,all_targets,reduced=reduced, scalers=scalers, model=0)[:,prop].cpu())))
         else:
             x = scalers[prop].inverse_transform(all_inputs[:][:,prop].cpu())
             xadv = scalers[prop].inverse_transform(fgsm_attack(epsilon,all_inputs,all_targets,reduced=reduced, scalers=scalers)[:,prop].cpu())
@@ -272,7 +393,17 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
     ax2.set_ylim(0,2)
     ax2.set_xlim(minimum,maximum)
     ax2.set_ylabel('FGSM/raw')
-    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/{prop}_{input_names[prop]}_reduced_{reduced}_new.png', bbox_inches='tight', dpi=300)
+    if method == 0:
+        method_text = 'no weighting'
+        filename_text = '_as_is'
+    elif method == 1:
+        method_text = '1 - rel. freq. weighting'
+        filename_text = '_old'
+    else:
+        method_text '1 / rel. freq. weighting'
+        filename_text = '_new'
+    fig.suptitle(f'during training: {method_text}')
+    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/{prop}_{input_names[prop]}_reduced_{reduced}_method_{filename_text}.png', bbox_inches='tight', dpi=300)
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -288,7 +419,7 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
 #compare_inputs(0,epsilon,minimum=None,maximum=None,reduced=False)
 compare_inputs(0,epsilon,minimum=None,maximum=None,reduced=True)
 
-
+'''
 # Jet pt
 #compare_inputs(1,epsilon,minimum=None,maximum=1000,reduced=False)
 compare_inputs(1,epsilon,minimum=None,maximum=1000,reduced=True)
@@ -531,4 +662,4 @@ compare_inputs(65,epsilon,minimum=None,maximum=None,reduced=True)
 # vertexNTracks
 #compare_inputs(66,epsilon,minimum=None,maximum=None,reduced=False)
 compare_inputs(66,epsilon,minimum=None,maximum=None,reduced=True)
-
+'''
