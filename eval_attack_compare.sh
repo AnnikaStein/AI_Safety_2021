@@ -8,11 +8,11 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=ATTComp1
+#SBATCH --job-name=ATTComp5
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=21:50:00
+#SBATCH --time=4:50:00
 
 #SBATCH --account=rwth0583
 
@@ -31,4 +31,3 @@ cd /home/um106329/aisafety
 source ~/miniconda3/bin/activate
 conda activate my-env
 python3 eval_attack_compare.py
-
