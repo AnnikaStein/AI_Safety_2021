@@ -25,7 +25,7 @@ colormapping = ['blue','','','','purple','red','chocolate','grey']
 
 
 
-at_epoch = 1
+at_epoch = 5
 
 NUM_DATASETS = 200
 
@@ -343,7 +343,7 @@ def apply_noise(magn=[1],offset=[0]):
     gc.collect(2)
 
 
-def fgsm_attack(epsilon=1e-1,sample=BvsUDSG_inputs,targets=BvsUDSG_targets,reduced=True):
+def fgsm_attack(epsilon=1e-1,sample=BvsUDSG_inputs,targets=BvsUDSG_targets,reduced=True, model=0):
     xadv = sample.clone().detach()
     
     # calculate the gradient of the model w.r.t. the *input* tensor:
@@ -351,10 +351,20 @@ def fgsm_attack(epsilon=1e-1,sample=BvsUDSG_inputs,targets=BvsUDSG_targets,reduc
     xadv.requires_grad = True
     
     # then we just do the forward and backwards pass as usual:
-    preds = model(xadv)
-    loss = criterion(preds, targets.long()).mean()
+    if model == 0:
+        preds = model0(xadv)
+        loss = criterion0(preds, targets.long()).mean()
+        model0.zero_grad()
+    elif model == 1:
+        preds = model1(xadv)
+        loss = criterion1(preds, targets.long()).mean()
+        model1.zero_grad()
+    else:
+        preds = model2(xadv)
+        loss = criterion2(preds, targets.long()).mean()
+        model2.zero_grad()
     
-    model.zero_grad()
+    
     loss.backward()
     
     with torch.no_grad():
@@ -395,14 +405,28 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     
     fprl,tprl = [],[]
     for e in epsilon:
-        adv_inputs = fgsm_attack(e,reduced=reduced)
-        fgsm_predictions = model(adv_inputs).detach().numpy()
+        adv_inputs0 = fgsm_attack(e,reduced=reduced,model=0)
+        adv_inputs1 = fgsm_attack(e,reduced=reduced,model=1)
+        adv_inputs2 = fgsm_attack(e,reduced=reduced,model=2)
+        fgsm_predictions0 = model0(adv_inputs0).detach().numpy()
+        fgsm_predictions1 = model1(adv_inputs1).detach().numpy()
+        fgsm_predictions2 = model2(adv_inputs2).detach().numpy()
         
-        fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions[:,0])
+        fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions0[:,0])
         fprl.append(fpr)
         tprl.append(tpr)
-        del adv_inputs
-        del fgsm_predictions
+        fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions1[:,0])
+        fprl.append(fpr)
+        tprl.append(tpr)
+        fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions2[:,0])
+        fprl.append(fpr)
+        tprl.append(tpr)
+        del adv_inputs0
+        del fgsm_predictions0
+        del adv_inputs1
+        del fgsm_predictions1
+        del adv_inputs2
+        del fgsm_predictions2
         gc.collect()
     
     plt.figure(5,[15,15])
@@ -419,7 +443,7 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     #plt.plot([0.1,1.01],[0.9,0.735],'--',color='grey')
     #plt.plot([0,0.3],[0.4,0.0],'--',color='grey')
 
-    for i in range(len(epsilon)):
+    for i in range(len(epsilon) * 3):
         plt.plot(fprl[i],tprl[i],colormapping[i])
         
     #ax = plt.axes([.37, .16, .5, .5])
@@ -429,10 +453,14 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     #plt.xlim(0,0.1)
     #plt.ylim(0.4,0.9)
     
-    legend = [f'$\epsilon={e}$' for e in epsilon]
-    legend[0] = 'undisturbed'
+    eps = epsilon[-1]
+    epsi = str(eps).replace('.','')
+    
+    legend = ['undisturbed, no weighting', 'undisturbed, 1 - rel. freq. weighting', 'undisturbed, 1/rel. freq. weighting', 
+              f'$\epsilon={eps}$, no weighting', f'$\epsilon={eps}$, 1 - rel. freq. weighting', f'$\epsilon={eps}$, 1/rel. freq. weighting'] 
+    
     plt.legend(legend)
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/fgsm_reduced_{reduced}.png', bbox_inches='tight', dpi=300)
+    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_{epsi}_fgsm_reduced_{reduced}.png', bbox_inches='tight', dpi=300)
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -442,6 +470,9 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     
 
     
-apply_noise([0,0.1])    
+#apply_noise([0,0.1])    
+
 #execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
-#execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],True)
+
+execute_fgsm([0,0.1],True)
+execute_fgsm([0,0.01],True)
