@@ -31,16 +31,16 @@ plt.style.use(hep.cms.style.ROOT)
         ''        :  with factor 1 - relative frequency per flavour category
         '_new'    :  with factor 1 / relative frequency per flavour category        
 '''
-weighting_method = '_as_is'   
-    
+weighting_method = '_new'   
+print(f'weighting method: {weighting_method}')    
 
 # Parameters for the training and validation    
 bsize = 250000    
 lrate = 0.00001
-prev_epochs = 0
+prev_epochs = 40
 
 # Manually update the file path to the latest training job message
-print(f'starting to train the model after {prev_epochs} epochs that were already done, see output.19093262.txt')
+print(f'starting to train the model after {prev_epochs} epochs that were already done')
 print(f'learning rate for this script: {lrate}')
 print(f'batch size for this script: {bsize}')
     
@@ -226,5 +226,4 @@ for p in range(epochs):
     print(f"Time for epoch {prev_epochs+p}: {np.floor((times[p+1]-times[p])/60)} min {((times[p+1]-times[p])%60)} s")
 end = time.time()
 print(f"Total time for whole script: {np.floor((end-start)/60)} min {np.ceil((end-start)%60)} s")
-
 
