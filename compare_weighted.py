@@ -18,7 +18,7 @@ plt.style.use(hep.cms.style.ROOT)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-method = 0
+method = 2
 
 epsilon = 0.01
 
@@ -395,14 +395,14 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
     ax2.set_ylabel('FGSM/raw')
     if method == 0:
         method_text = 'no weighting'
-        filename_text = '_as_is'
+        filename_text = 'as_is'
     elif method == 1:
         method_text = '1 - rel. freq. weighting'
-        filename_text = '_old'
+        filename_text = 'old'
     else:
-        method_text '1 / rel. freq. weighting'
-        filename_text = '_new'
-    fig.suptitle(f'during training: {method_text}')
+        method_text = '1 / rel. freq. weighting'
+        filename_text = 'new'
+    fig.suptitle(f'during training: {method_text}', fontsize=10)
     fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/{prop}_{input_names[prop]}_reduced_{reduced}_method_{filename_text}.png', bbox_inches='tight', dpi=300)
     del fig, ax1, ax2
     gc.collect(2)
@@ -414,12 +414,12 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
 #for i in range(0,67):
 #    compare_inputs(i,epsilon,minimum=None,maximum=None,reduced=False)
 #    compare_inputs(i,epsilon,minimum=None,maximum=None,reduced=True)
-'''
+
 # Jet eta
 #compare_inputs(0,epsilon,minimum=None,maximum=None,reduced=False)
 compare_inputs(0,epsilon,minimum=None,maximum=None,reduced=True)
 
-'''
+
 # Jet pt
 #compare_inputs(1,epsilon,minimum=None,maximum=1000,reduced=False)
 compare_inputs(1,epsilon,minimum=None,maximum=1000,reduced=True)
@@ -460,26 +460,26 @@ compare_inputs(10,epsilon,minimum=-0.1,maximum=5,reduced=True)
 #compare_inputs(11,epsilon,minimum=-0.1,maximum=5,reduced=False)
 compare_inputs(11,epsilon,minimum=-0.1,maximum=5,reduced=True)
 
-
+'''
 # trackDeltaR
 #compare_inputs(12,epsilon,minimum=0,maximum=0.301,reduced=False)
-compare_inputs(12,epsilon,minimum=0,maximum=0.301,reduced=True)
+compare_inputs(12,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
 
 #compare_inputs(13,epsilon,minimum=0,maximum=0.301,reduced=False)
-compare_inputs(13,epsilon,minimum=0,maximum=0.301,reduced=True)
+compare_inputs(13,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
 
 #compare_inputs(14,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(14,epsilon,minimum=0,maximum=0.5,reduced=True)
+compare_inputs(14,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
 
 #compare_inputs(15,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(15,epsilon,minimum=0,maximum=0.5,reduced=True)
+compare_inputs(15,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
 
 #compare_inputs(16,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(16,epsilon,minimum=0,maximum=0.5,reduced=True)
+compare_inputs(16,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
 
 #compare_inputs(17,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(17,epsilon,minimum=0,maximum=0.5,reduced=True)
-
+compare_inputs(17,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
+'''
 
 # trackEtaRel
 #compare_inputs(18,epsilon,minimum=0,maximum=9,reduced=False)
