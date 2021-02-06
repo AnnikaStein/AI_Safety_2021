@@ -25,7 +25,7 @@ colormapping = ['blue','','','','purple','red','chocolate','grey']
 
 
 
-at_epoch = 5
+at_epoch = 40
 
 NUM_DATASETS = 200
 
@@ -112,6 +112,8 @@ print('predictions without weighting done')
     Predictions: With first weighting method
     
 '''
+
+'''
 # as calculated in dataset_info.ipynb
 allweights1 = [0.9393934969162745, 0.9709644530642717, 0.8684253665882813, 0.2212166834311725]
 class_weights1 = torch.FloatTensor(allweights1).to(device)
@@ -150,7 +152,7 @@ model1.to(device)
 model1.eval()
 predictions = model1(test_inputs).detach().numpy()
 print('predictions with first weighting method done')
-
+'''
 
 
 '''
@@ -214,7 +216,7 @@ with open('/home/um106329/aisafety/length_cleaned_data_test.npy', 'rb') as f:
 BvsUDSG_inputs = torch.cat((test_inputs[jetFlavour==1],test_inputs[jetFlavour==4]))
 BvsUDSG_targets = torch.cat((test_targets[jetFlavour==1],test_targets[jetFlavour==4]))
 BvsUDSG_predictions_as_is = np.concatenate((predictions_as_is[jetFlavour==1],predictions_as_is[jetFlavour==4]))
-BvsUDSG_predictions = np.concatenate((predictions[jetFlavour==1],predictions[jetFlavour==4]))
+#BvsUDSG_predictions = np.concatenate((predictions[jetFlavour==1],predictions[jetFlavour==4]))
 BvsUDSG_predictions_new = np.concatenate((predictions_new[jetFlavour==1],predictions_new[jetFlavour==4]))
 BvsUDSG_DeepCSV = np.concatenate((DeepCSV_testset[jetFlavour==1],DeepCSV_testset[jetFlavour==4]))
 gc.collect()
@@ -295,15 +297,15 @@ def apply_noise(magn=[1],offset=[0]):
     for m in magn:
         noise = torch.Tensor(np.random.normal(offset,m,(len(BvsUDSG_inputs),67)))
         noise_predictions0 = model0(BvsUDSG_inputs + noise).detach().numpy()
-        noise_predictions1 = model1(BvsUDSG_inputs + noise).detach().numpy()
+        #noise_predictions1 = model1(BvsUDSG_inputs + noise).detach().numpy()
         noise_predictions2 = model2(BvsUDSG_inputs + noise).detach().numpy()
         
         fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],noise_predictions0[:,0])
         fprl.append(fpr)
         tprl.append(tpr)
-        fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],noise_predictions1[:,0])
-        fprl.append(fpr)
-        tprl.append(tpr)
+        #fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],noise_predictions1[:,0])
+        #fprl.append(fpr)
+        #tprl.append(tpr)
         fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],noise_predictions2[:,0])
         fprl.append(fpr)
         tprl.append(tpr)
@@ -332,8 +334,10 @@ def apply_noise(magn=[1],offset=[0]):
     sig = magn[-1]
     sigm = str(sig).replace('.','')
     
-    legend = ['undisturbed, no weighting', 'undisturbed, 1 - rel. freq. weighting', 'undisturbed, 1/rel. freq. weighting', 
-              f'$\sigma={sig}$, no weighting', f'$\sigma={sig}$, 1 - rel. freq. weighting', f'$\sigma={sig}$, 1/rel. freq. weighting'] 
+    #legend = ['undisturbed, no weighting', 'undisturbed, 1 - rel. freq. weighting', 'undisturbed, 1/rel. freq. weighting', 
+    #          f'$\sigma={sig}$, no weighting', f'$\sigma={sig}$, 1 - rel. freq. weighting', f'$\sigma={sig}$, 1/rel. freq. weighting'] 
+    legend = ['undisturbed, no weighting', 'undisturbed, 1/rel. freq. weighting', 
+              f'$\sigma={sig}$, no weighting', f'$\sigma={sig}$, 1/rel. freq. weighting'] 
     plt.legend(legend)
     
     plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_noise_{sigm}.png', bbox_inches='tight', dpi=300)
@@ -406,25 +410,25 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     fprl,tprl = [],[]
     for e in epsilon:
         adv_inputs0 = fgsm_attack(e,reduced=reduced,model=0)
-        adv_inputs1 = fgsm_attack(e,reduced=reduced,model=1)
+        #adv_inputs1 = fgsm_attack(e,reduced=reduced,model=1)
         adv_inputs2 = fgsm_attack(e,reduced=reduced,model=2)
         fgsm_predictions0 = model0(adv_inputs0).detach().numpy()
-        fgsm_predictions1 = model1(adv_inputs1).detach().numpy()
+        #fgsm_predictions1 = model1(adv_inputs1).detach().numpy()
         fgsm_predictions2 = model2(adv_inputs2).detach().numpy()
         
         fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions0[:,0])
         fprl.append(fpr)
         tprl.append(tpr)
-        fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions1[:,0])
-        fprl.append(fpr)
-        tprl.append(tpr)
+        #fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions1[:,0])
+        #fprl.append(fpr)
+        #tprl.append(tpr)
         fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions2[:,0])
         fprl.append(fpr)
         tprl.append(tpr)
         del adv_inputs0
         del fgsm_predictions0
-        del adv_inputs1
-        del fgsm_predictions1
+        #del adv_inputs1
+        #del fgsm_predictions1
         del adv_inputs2
         del fgsm_predictions2
         gc.collect()
@@ -443,8 +447,10 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     #plt.plot([0.1,1.01],[0.9,0.735],'--',color='grey')
     #plt.plot([0,0.3],[0.4,0.0],'--',color='grey')
 
-    for i in range(len(epsilon) * 3):
+    for i in range(len(epsilon)//2):
         plt.plot(fprl[i],tprl[i],colormapping[i])
+    for j in range(len(epsilon)//2, len(epsilon)):
+        plt.plot(fprl[j],tprl[j],colormapping[j],'--')
         
     #ax = plt.axes([.37, .16, .5, .5])
     #for i in range(len(epsilon)):
@@ -456,11 +462,15 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     eps = epsilon[-1]
     epsi = str(eps).replace('.','')
     
-    legend = ['undisturbed, no weighting', 'undisturbed, 1 - rel. freq. weighting', 'undisturbed, 1/rel. freq. weighting', 
-              f'$\epsilon={eps}$, no weighting', f'$\epsilon={eps}$, 1 - rel. freq. weighting', f'$\epsilon={eps}$, 1/rel. freq. weighting'] 
+    #legend = ['undisturbed, no weighting', 'undisturbed, 1 - rel. freq. weighting', 'undisturbed, 1/rel. freq. weighting', 
+    #          f'$\epsilon={eps}$, no weighting', f'$\epsilon={eps}$, 1 - rel. freq. weighting', f'$\epsilon={eps}$, 1/rel. freq. weighting'] 
+    
+    legend = ['undisturbed, no weighting', 'undisturbed, 1/rel. freq. weighting', 
+              f'$\epsilon={eps}$, no weighting', f'$\epsilon={eps}$, 1/rel. freq. weighting'] 
+    
     
     plt.legend(legend)
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_{epsi}_fgsm_reduced_{reduced}.png', bbox_inches='tight', dpi=300)
+    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_{epsi}_fgsm_reduced_{reduced}_v3.png', bbox_inches='tight', dpi=300)
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -474,5 +484,5 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
 
 #execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
 
-execute_fgsm([0,0.1],True)
+#execute_fgsm([0,0.1],True)
 execute_fgsm([0,0.01],True)
