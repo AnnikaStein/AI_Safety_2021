@@ -37,7 +37,7 @@ print(f'weighting method: {weighting_method}')
 # Parameters for the training and validation    
 bsize = 250000    
 lrate = 0.00001
-prev_epochs = 40
+prev_epochs = 90
 
 # Manually update the file path to the latest training job message
 print(f'starting to train the model after {prev_epochs} epochs that were already done')
@@ -144,7 +144,7 @@ stale_epochs, min_loss = 0, 10
 max_stale_epochs = 100
 
 # epochs to be trained with the current script (on top of the prev_epochs)
-epochs = 10
+epochs = 30
 times = []
 
 
