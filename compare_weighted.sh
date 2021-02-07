@@ -8,7 +8,7 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=40COM001_0
+#SBATCH --job-name=40COM001_2
 
 #SBATCH --output=output.%J.txt
 
