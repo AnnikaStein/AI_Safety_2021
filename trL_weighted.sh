@@ -12,7 +12,7 @@
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=9:10:00
+#SBATCH --time=30:10:00
 
 #SBATCH --account=rwth0583
 
