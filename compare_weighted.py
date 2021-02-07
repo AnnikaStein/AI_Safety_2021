@@ -329,6 +329,18 @@ def fgsm_attack(epsilon=1e-1,sample=None,targets=None,reduced=True, scalers=None
                     for i in [41, 48, 49, 56]:
                         xadv[:,i][defaults] = sample[:,i][defaults]
                     break
+            vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
+            vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
+            vars_with_0_defaults.extend([18, 19, 20, 21])               # trackEtaRel_0 to _3
+            vars_with_0_defaults.extend([22, 23, 24, 25, 26, 27])       # trackJetDistVal_0 to _5
+            vars_with_0_defaults.extend([29, 30, 31, 32, 33, 34])       # trackPtRatio_0 to _5
+            vars_with_0_defaults.extend([35, 36, 37, 38, 39, 40])       # trackPtRel_0 to _5
+            for i in vars_with_0_defaults:
+                defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu())) < 0.001   # "floating point error" --> allow some error margin
+                if np.sum(defaults) != 0:
+                    for i in vars_with_0_defaults:
+                        xadv[:,i][defaults] = sample[:,i][defaults]
+                    break
         return xadv.detach()
   
        
@@ -402,8 +414,8 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
     else:
         method_text = '1 / rel. freq. weighting'
         filename_text = 'new'
-    fig.suptitle(f'during training: {method_text}', fontsize=10)
-    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/{prop}_{input_names[prop]}_reduced_{reduced}_method_{filename_text}.png', bbox_inches='tight', dpi=300)
+    fig.suptitle(f'During training: {method_text}, FGSM with $\epsilon={epsilon}$', fontsize=10)
+    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/{prop}_{input_names[prop]}_reduced_{reduced}_method_{filename_text}_v3.png', bbox_inches='tight', dpi=300)
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -463,22 +475,22 @@ compare_inputs(11,epsilon,minimum=-0.1,maximum=5,reduced=True)
 '''
 # trackDeltaR
 #compare_inputs(12,epsilon,minimum=0,maximum=0.301,reduced=False)
-compare_inputs(12,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
+compare_inputs(12,epsilon,minimum=None,maximum=None,reduced=True)
 
 #compare_inputs(13,epsilon,minimum=0,maximum=0.301,reduced=False)
-compare_inputs(13,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
+compare_inputs(13,epsilon,minimum=None,maximum=None,reduced=True)
 
 #compare_inputs(14,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(14,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
+compare_inputs(14,epsilon,minimum=None,maximum=None,reduced=True)
 
 #compare_inputs(15,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(15,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
+compare_inputs(15,epsilon,minimum=None,maximum=None,reduced=True)
 
 #compare_inputs(16,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(16,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
+compare_inputs(16,epsilon,minimum=None,maximum=None,reduced=True)
 
 #compare_inputs(17,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(17,epsilon,minimum=-0.1,maximum=0.5,reduced=True)
+compare_inputs(17,epsilon,minimum=None,maximum=None,reduced=True)
 '''
 
 # trackEtaRel
