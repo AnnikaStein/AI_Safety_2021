@@ -28,7 +28,7 @@ colorcode = ['firebrick','magenta','cyan','darkgreen']
 
 
 
-at_epoch = 1
+at_epoch = 90
 
 NUM_DATASETS = 200
 
@@ -111,7 +111,7 @@ print('predictions without weighting done')
     Predictions: With first weighting method
     
 '''
-
+'''
 # as calculated in dataset_info.ipynb
 allweights = [0.9393934969162745, 0.9709644530642717, 0.8684253665882813, 0.2212166834311725]
 class_weights = torch.FloatTensor(allweights).to(device)
@@ -151,7 +151,7 @@ model.to(device)
 model.eval()
 predictions_old = model(test_inputs).detach().numpy()
 print('predictions with first weighting method done')
-
+'''
 
 
 
@@ -202,6 +202,8 @@ predictions_new = model(test_inputs).detach().numpy()
 print('predictions with new weighting method done')
 
 
+
+
 def compare_hist():
         
     classifierHist = hist.Hist("Jets",
@@ -223,12 +225,12 @@ def compare_hist():
     classifierHist.fill(sample="No weighting",flavour='bb-jets',probb=predictions_as_is[:,0][jetFlavour==2],probbb=predictions_as_is[:,1][jetFlavour==2],probc=predictions_as_is[:,2][jetFlavour==2],probudsg=predictions_as_is[:,3][jetFlavour==2])
     classifierHist.fill(sample="No weighting",flavour='c-jets',probb=predictions_as_is[:,0][jetFlavour==3],probbb=predictions_as_is[:,1][jetFlavour==3],probc=predictions_as_is[:,2][jetFlavour==3],probudsg=predictions_as_is[:,3][jetFlavour==3])
     classifierHist.fill(sample="No weighting",flavour='udsg-jets',probb=predictions_as_is[:,0][jetFlavour==4],probbb=predictions_as_is[:,1][jetFlavour==4],probc=predictions_as_is[:,2][jetFlavour==4],probudsg=predictions_as_is[:,3][jetFlavour==4])
-    
+    '''
     classifierHist.fill(sample="1 - rel. freq. weighting",flavour='b-jets',probb=predictions_old[:,0][jetFlavour==1],probbb=predictions_old[:,1][jetFlavour==1],probc=predictions_old[:,2][jetFlavour==1],probudsg=predictions_old[:,3][jetFlavour==1])
     classifierHist.fill(sample="1 - rel. freq. weighting",flavour='bb-jets',probb=predictions_old[:,0][jetFlavour==2],probbb=predictions_old[:,1][jetFlavour==2],probc=predictions_old[:,2][jetFlavour==2],probudsg=predictions_old[:,3][jetFlavour==2])
     classifierHist.fill(sample="1 - rel. freq. weighting",flavour='c-jets',probb=predictions_old[:,0][jetFlavour==3],probbb=predictions_old[:,1][jetFlavour==3],probc=predictions_old[:,2][jetFlavour==3],probudsg=predictions_old[:,3][jetFlavour==3])
     classifierHist.fill(sample="1 - rel. freq. weighting",flavour='udsg-jets',probb=predictions_old[:,0][jetFlavour==4],probbb=predictions_old[:,1][jetFlavour==4],probc=predictions_old[:,2][jetFlavour==4],probudsg=predictions_old[:,3][jetFlavour==4])
-    
+    '''
     classifierHist.fill(sample="1 / rel. freq. weighting",flavour='b-jets',probb=predictions_new[:,0][jetFlavour==1],probbb=predictions_new[:,1][jetFlavour==1],probc=predictions_new[:,2][jetFlavour==1],probudsg=predictions_new[:,3][jetFlavour==1])
     classifierHist.fill(sample="1 / rel. freq. weighting",flavour='bb-jets',probb=predictions_new[:,0][jetFlavour==2],probbb=predictions_new[:,1][jetFlavour==2],probc=predictions_new[:,2][jetFlavour==2],probudsg=predictions_new[:,3][jetFlavour==2])
     classifierHist.fill(sample="1 / rel. freq. weighting",flavour='c-jets',probb=predictions_new[:,0][jetFlavour==3],probbb=predictions_new[:,1][jetFlavour==3],probc=predictions_new[:,2][jetFlavour==3],probudsg=predictions_new[:,3][jetFlavour==3])
@@ -246,12 +248,12 @@ def compare_hist():
     hist.plot1d(classifierHist['No weighting'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'blue','linewidth':3})
     hist.plot1d(classifierHist['No weighting'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'blue','linewidth':3})
     hist.plot1d(classifierHist['No weighting'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':'blue','linewidth':3})
-    
+    '''
     hist.plot1d(classifierHist['1 - rel. freq. weighting'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':'orange','linewidth':3})
     hist.plot1d(classifierHist['1 - rel. freq. weighting'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'orange','linewidth':3})
     hist.plot1d(classifierHist['1 - rel. freq. weighting'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'orange','linewidth':3})
     hist.plot1d(classifierHist['1 - rel. freq. weighting'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':'orange','linewidth':3})
-    
+    '''
     hist.plot1d(classifierHist['1 / rel. freq. weighting'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':'green','linewidth':3})
     hist.plot1d(classifierHist['1 / rel. freq. weighting'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'green','linewidth':3})
     hist.plot1d(classifierHist['1 / rel. freq. weighting'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'green','linewidth':3})
@@ -328,76 +330,81 @@ def do_hist(weighting = 1):
     
     
 do_hist(0)
-do_hist(1)
+#do_hist(1)
 do_hist(2)
 compare_hist()
 
 
-'''
+
 #plot some ROC curves
 fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,17],num=4)
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==0 else 0) for i in range(len(test_targets))],predictions_as_is[:,0])
 ax1.plot(fpr,tpr)
 print(f"auc for b-tagging without weighting: {metrics.auc(fpr,tpr)}")
-fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==0 else 0) for i in range(len(test_targets))],predictions_old[:,0])
-ax1.plot(fpr,tpr)
-print(f"auc for b-tagging with first weighting method: {metrics.auc(fpr,tpr)}")
+#fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==0 else 0) for i in range(len(test_targets))],predictions_old[:,0])
+#ax1.plot(fpr,tpr)
+#print(f"auc for b-tagging with first weighting method: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==0 else 0) for i in range(len(test_targets))],predictions_new[:,0])
 ax1.plot(fpr,tpr)
 print(f"auc for b-tagging with new weighting method: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==0 else 0) for i in range(len(test_targets))],DeepCSV_testset[:,0])
 ax1.plot(fpr,tpr)
-ax1.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
+#ax1.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
+ax1.legend(['Classifier: Without Weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
 ax1.set_xlabel('false positive rate')
 ax1.set_ylabel('true positive rate')
 ax1.set_title('b tagging')
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==1 else 0) for i in range(len(test_targets))],predictions_as_is[:,1])
 ax2.plot(fpr,tpr)
 print(f"auc for bb-tagging without weighting: {metrics.auc(fpr,tpr)}")
-fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==1 else 0) for i in range(len(test_targets))],predictions_old[:,1])
-ax2.plot(fpr,tpr)
-print(f"auc for bb-tagging with first weighting method: {metrics.auc(fpr,tpr)}")
+#fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==1 else 0) for i in range(len(test_targets))],predictions_old[:,1])
+#ax2.plot(fpr,tpr)
+#print(f"auc for bb-tagging with first weighting method: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==1 else 0) for i in range(len(test_targets))],predictions_new[:,1])
 ax2.plot(fpr,tpr)
 print(f"auc for bb-tagging with new weighting method: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==1 else 0) for i in range(len(test_targets))],DeepCSV_testset[:,1])
 ax2.plot(fpr,tpr)
-ax2.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
+#ax2.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
+ax2.legend(['Classifier: Without Weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
 ax2.set_xlabel('false positive rate')
 ax2.set_ylabel('true positive rate')
 ax2.set_title('bb tagging')
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==2 else 0) for i in range(len(test_targets))],predictions_as_is[:,2])
 ax3.plot(fpr,tpr)
 print(f"auc for c-tagging as is: {metrics.auc(fpr,tpr)}")
-fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==2 else 0) for i in range(len(test_targets))],predictions_old[:,2])
-ax3.plot(fpr,tpr)
-print(f"auc for c-tagging old: {metrics.auc(fpr,tpr)}")
+#fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==2 else 0) for i in range(len(test_targets))],predictions_old[:,2])
+#ax3.plot(fpr,tpr)
+#print(f"auc for c-tagging old: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==2 else 0) for i in range(len(test_targets))],predictions_new[:,2])
 ax3.plot(fpr,tpr)
 print(f"auc for c-tagging new: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==2 else 0) for i in range(len(test_targets))],DeepCSV_testset[:,2])
 ax3.plot(fpr,tpr)
-ax3.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
+#ax3.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
+ax3.legend(['Classifier: Without Weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
 ax3.set_xlabel('false positive rate')
 ax3.set_ylabel('true positive rate')
 ax3.set_title('c tagging')
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==3 else 0) for i in range(len(test_targets))],predictions_as_is[:,3])
 ax4.plot(fpr,tpr)
 print(f"auc for udsg-tagging as is: {metrics.auc(fpr,tpr)}")
-fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==3 else 0) for i in range(len(test_targets))],predictions_old[:,3])
-ax4.plot(fpr,tpr)
-print(f"auc for udsg-tagging old: {metrics.auc(fpr,tpr)}")
+#fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==3 else 0) for i in range(len(test_targets))],predictions_old[:,3])
+#ax4.plot(fpr,tpr)
+#print(f"auc for udsg-tagging old: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==3 else 0) for i in range(len(test_targets))],predictions_new[:,3])
 ax4.plot(fpr,tpr)
 print(f"auc for udsg-tagging new: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==3 else 0) for i in range(len(test_targets))],DeepCSV_testset[:,3])
 ax4.plot(fpr,tpr)
-ax4.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
+#ax4.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
+ax4.legend(['Classifier: Without Weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'])
 ax4.set_xlabel('false positive rate')
 ax4.set_ylabel('true positive rate')
 ax4.set_title('udsg- tagging')
 ax1.get_legend().remove(), ax2.get_legend().remove(), ax3.get_legend().remove()
-ax4.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
+#ax4.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
+ax4.legend(['Classifier: Without Weighting','Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
 fig.suptitle(f'ROCs for b, bb, c and light jets\n After {at_epoch} epochs, evaluated on {len_test} jets')
 fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_roc.png', bbox_inches='tight', dpi=300)
 gc.collect(2)
@@ -411,8 +418,8 @@ BvsUDSG_targets = torch.cat((test_targets[jetFlavour==1],test_targets[jetFlavour
 del test_targets
 BvsUDSG_predictions_as_is = np.concatenate((predictions_as_is[jetFlavour==1],predictions_as_is[jetFlavour==4]))
 del predictions_as_is
-BvsUDSG_predictions = np.concatenate((predictions_old[jetFlavour==1],predictions_old[jetFlavour==4]))
-del predictions
+#BvsUDSG_predictions = np.concatenate((predictions_old[jetFlavour==1],predictions_old[jetFlavour==4]))
+#del predictions_old
 BvsUDSG_predictions_new = np.concatenate((predictions_new[jetFlavour==1],predictions_new[jetFlavour==4]))
 del predictions_new
 BvsUDSG_DeepCSV = np.concatenate((DeepCSV_testset[jetFlavour==1],DeepCSV_testset[jetFlavour==4]))
@@ -427,9 +434,9 @@ fig = plt.figure(figsize=[15,15],num=40)
 fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_predictions_as_is[:,0])
 plt.plot(fpr,tpr)
 print(f"auc for B vs UDSG as is: {metrics.auc(fpr,tpr)}")
-fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_predictions[:,0])
-plt.plot(fpr,tpr)
-print(f"auc for B vs UDSG: {metrics.auc(fpr,tpr)}")
+#fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_predictions[:,0])
+#plt.plot(fpr,tpr)
+#print(f"auc for B vs UDSG: {metrics.auc(fpr,tpr)}")
 fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_predictions_new[:,0])
 plt.plot(fpr,tpr)
 print(f"auc for B vs UDSG new: {metrics.auc(fpr,tpr)}")
@@ -456,8 +463,9 @@ plt.ylim(-0.05,1.05)
 #fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_DeepCSV[:,0])
 #plt.plot(fpr,tpr)
 
-plt.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
+#plt.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
+plt.legend(['Classifier: Without Weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
 #plt.xlim(0,0.1)
 #plt.ylim(0.4,0.9)
 fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_roc_BvsUDSG.png', bbox_inches='tight', dpi=300)
-'''
+
