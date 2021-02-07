@@ -22,10 +22,11 @@ device = torch.device("cpu")
 #This is just some plot styling
 plt.style.use(hep.cms.style.ROOT)
 colormapping = ['blue','','','','purple','red','chocolate','grey']
+new_colors = ['blue', 'orange','blue', 'orange']
 
 
 
-at_epoch = 40
+at_epoch = 80
 
 NUM_DATASETS = 200
 
@@ -321,7 +322,7 @@ def apply_noise(magn=[1],offset=[0]):
     #plt.plot([0.1,1.01],[0.9,0.735],'--',color='grey')
     #plt.plot([0,0.3],[0.4,0.0],'--',color='grey')
     
-    for i in range(len(magn)*3):
+    for i in range(len(magn)*2):
         plt.plot(fprl[i],tprl[i],colormapping[i])
     
     #ax = plt.axes([.37, .16, .5, .5])
@@ -402,6 +403,25 @@ def fgsm_attack(epsilon=1e-1,sample=BvsUDSG_inputs,targets=BvsUDSG_targets,reduc
                     for i in [41, 48, 49, 56]:
                         xadv[:,i][defaults] = sample[:,i][defaults]
                     break
+            vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
+            vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
+            vars_with_0_defaults.extend([18, 19, 20, 21])               # trackEtaRel_0 to _3
+            vars_with_0_defaults.extend([22, 23, 24, 25, 26, 27])       # trackJetDistVal_0 to _5
+            vars_with_0_defaults.extend([29, 30, 31, 32, 33, 34])       # trackPtRatio_0 to _5
+            vars_with_0_defaults.extend([35, 36, 37, 38, 39, 40])       # trackPtRel_0 to _5
+            for i in vars_with_0_defaults:
+                defaults = np.zeros(len(sample))
+                for l, s in enumerate(length_data_test[:NUM_DATASETS]):
+                    scalers = allscalers[l]
+                    if l == 0:
+                        defaults[:int(s)] = abs(scalers[i].inverse_transform(sample[:int(s),i].cpu())) < 0.001
+                    else:
+                        defaults[int(length_data_test[l-1]) : int(s)] = abs(scalers[i].inverse_transform(sample[int(length_data_test[l-1]) : int(s),i].cpu())) < 0.001
+                        
+                if np.sum(defaults) != 0:
+                    for i in vars_with_0_defaults:
+                        xadv[:,i][defaults] = sample[:,i][defaults]
+                    break
         return xadv.detach()
     
     
@@ -447,10 +467,10 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     #plt.plot([0.1,1.01],[0.9,0.735],'--',color='grey')
     #plt.plot([0,0.3],[0.4,0.0],'--',color='grey')
 
-    for i in range(len(epsilon)//2):
-        plt.plot(fprl[i],tprl[i],colormapping[i])
-    for j in range(len(epsilon)//2, len(epsilon)):
-        plt.plot(fprl[j],tprl[j],colormapping[j],'--')
+    for i in [0,1]:
+        plt.plot(fprl[i],tprl[i],color=new_colors[i])
+    for j in [2,3]:
+        plt.plot(fprl[j],tprl[j],linestyle='dashed',color=new_colors[j])
         
     #ax = plt.axes([.37, .16, .5, .5])
     #for i in range(len(epsilon)):
@@ -484,5 +504,5 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
 
 #execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
 
-#execute_fgsm([0,0.1],True)
+execute_fgsm([0,0.1],True)
 execute_fgsm([0,0.01],True)
