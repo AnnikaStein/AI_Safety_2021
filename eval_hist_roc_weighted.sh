@@ -8,7 +8,7 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=EVALComp1
+#SBATCH --job-name=EVALComp90
 
 #SBATCH --output=output.%J.txt
 
