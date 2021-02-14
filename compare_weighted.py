@@ -22,7 +22,7 @@ method = 2
 
 epsilon = 0.01
 
-at_epoch = 40
+at_epoch = 120
 
 NUM_DATASETS = 200
 
@@ -82,6 +82,7 @@ model0.eval()
     Predictions: With first weighting method
     
 '''
+'''
 # as calculated in dataset_info.ipynb
 allweights1 = [0.9393934969162745, 0.9709644530642717, 0.8684253665882813, 0.2212166834311725]
 class_weights1 = torch.FloatTensor(allweights1).to(device)
@@ -120,7 +121,7 @@ model1.to(device)
 model1.eval()
 #predictions = model1(test_inputs).detach().numpy()
 #print('predictions with first weighting method done')
-
+'''
 
 
 '''
@@ -415,18 +416,23 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         method_text = '1 / rel. freq. weighting'
         filename_text = 'new'
     fig.suptitle(f'During training: {method_text}, FGSM with $\epsilon={epsilon}$', fontsize=10)
-    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/{prop}_{input_names[prop]}_reduced_{reduced}_method_{filename_text}_v3.png', bbox_inches='tight', dpi=300)
+    if range_given == False:
+        fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/{prop}_{input_names[prop]}_reduced_{reduced}_method_{filename_text}_v3_no_range_spec.png', bbox_inches='tight', dpi=300)
+    else:
+        fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/{prop}_{input_names[prop]}_reduced_{reduced}_method_{filename_text}_v3_specific_range.png', bbox_inches='tight', dpi=300)
     del fig, ax1, ax2
     gc.collect(2)
     
 
 
 
-'''    
-#for i in range(0,67):
-#    compare_inputs(i,epsilon,minimum=None,maximum=None,reduced=False)
-#    compare_inputs(i,epsilon,minimum=None,maximum=None,reduced=True)
-
+range_given = False    
+for i in range(0,67):
+    compare_inputs(i,epsilon,minimum=None,maximum=None,reduced=False)
+    compare_inputs(i,epsilon,minimum=None,maximum=None,reduced=True)
+    
+range_given = True
+'''
 # Jet eta
 #compare_inputs(0,epsilon,minimum=None,maximum=None,reduced=False)
 compare_inputs(0,epsilon,minimum=None,maximum=None,reduced=True)
@@ -475,22 +481,22 @@ compare_inputs(11,epsilon,minimum=-0.1,maximum=5,reduced=True)
 '''
 # trackDeltaR
 #compare_inputs(12,epsilon,minimum=0,maximum=0.301,reduced=False)
-compare_inputs(12,epsilon,minimum=None,maximum=None,reduced=True)
+compare_inputs(12,epsilon,minimum=-1,maximum=1,reduced=True)
 
 #compare_inputs(13,epsilon,minimum=0,maximum=0.301,reduced=False)
-compare_inputs(13,epsilon,minimum=None,maximum=None,reduced=True)
+compare_inputs(13,epsilon,minimum=-1,maximum=1,reduced=True)
 
 #compare_inputs(14,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(14,epsilon,minimum=None,maximum=None,reduced=True)
+compare_inputs(14,epsilon,minimum=-1,maximum=1,reduced=True)
 
 #compare_inputs(15,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(15,epsilon,minimum=None,maximum=None,reduced=True)
+compare_inputs(15,epsilon,minimum=-1,maximum=1,reduced=True)
 
 #compare_inputs(16,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(16,epsilon,minimum=None,maximum=None,reduced=True)
+compare_inputs(16,epsilon,minimum=-1,maximum=1,reduced=True)
 
 #compare_inputs(17,epsilon,minimum=0,maximum=0.5,reduced=False)
-compare_inputs(17,epsilon,minimum=None,maximum=None,reduced=True)
+compare_inputs(17,epsilon,minimum=-1,maximum=1,reduced=True)
 '''
 
 # trackEtaRel
