@@ -8,7 +8,7 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=v3ATTComp80
+#SBATCH --job-name=v3ATTComp120
 
 #SBATCH --output=output.%J.txt
 
