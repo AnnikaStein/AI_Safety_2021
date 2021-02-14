@@ -7,9 +7,9 @@ plt.style.use(hep.cms.style.ROOT)
 
 
 
-prev_epochs_0 = 90
+prev_epochs_0 = 120
 prev_epochs_1 = 80
-prev_epochs_2 = 90
+prev_epochs_2 = 120
 
 
 
