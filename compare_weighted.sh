@@ -8,11 +8,11 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=40COM001_2
+#SBATCH --job-name=120COM001_v3
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=6:30:00
+#SBATCH --time=10:30:00
 
 #SBATCH --account=rwth0583
 
