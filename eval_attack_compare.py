@@ -26,7 +26,7 @@ new_colors = ['blue', 'orange','blue', 'orange']
 
 
 
-at_epoch = 80
+at_epoch = 120
 
 NUM_DATASETS = 200
 
@@ -500,7 +500,7 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     
 
     
-#apply_noise([0,0.1])    
+apply_noise([0,0.1])    
 
 #execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
 
