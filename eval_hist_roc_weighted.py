@@ -1,6 +1,4 @@
-import uproot4 as uproot
 import numpy as np
-import awkward1 as ak
 
 import matplotlib.pyplot as plt
 import mplhep as hep
@@ -28,7 +26,7 @@ colorcode = ['firebrick','magenta','cyan','darkgreen']
 
 
 
-at_epoch = 90
+at_epoch = 120
 
 NUM_DATASETS = 200
 
