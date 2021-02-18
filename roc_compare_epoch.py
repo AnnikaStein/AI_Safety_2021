@@ -14,6 +14,8 @@ import coffea.hist as hist
 
 import time
 
+import pickle
+
 
 #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
@@ -25,9 +27,9 @@ colormapping = ['blue','','','','purple','red','chocolate','grey']
 new_colors_all = ['darkblue', 'orange','springgreen', 'red', 'dodgerblue', 'gold', 'magenta']
 
 
-
-at_epoch = [20,70,120]
-
+at_epoch = [20,40,60,80,100,120]
+#at_epoch = [i for i in range(1,121)]
+#at_epoch = [20,70,120]
 
 NUM_DATASETS = 200
 
@@ -571,5 +573,181 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
 #execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
 
 
-execute_fgsm([0,0.01],True)
-execute_fgsm([0,0.1],True)
+#execute_fgsm([0,0.01],True)
+#execute_fgsm([0,0.1],True)
+
+
+
+def compare_auc(sigmas=[0.1],epsilons=[0.01],reduced=True,offset=[0]):
+    start = time.time()
+    ##### CREATING THE AUCs #####
+    ### RAW ###
+    auc0_raw = []
+    auc2_raw = []
+    for ep in range(len(at_epoch)):
+        fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_predictions_as_is[ep][:,0])
+        auc0_raw.append(metrics.auc(fpr,tpr))
+        fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_predictions_new[ep][:,0])
+        auc2_raw.append(metrics.auc(fpr,tpr))
+    
+    with open('/home/um106329/aisafety/models/weighted/compare/auc/auc0_raw.data', 'wb') as file:
+        pickle.dump(auc0_raw, file)
+    
+    with open('/home/um106329/aisafety/models/weighted/compare/auc/auc2_raw.data', 'wb') as file:
+        pickle.dump(auc2_raw, file)
+    
+    end = time.time()
+    print(f"Time to create raw AUCs: {np.floor((end-start)/60)} min {np.ceil((end-start)%60)} s")
+    start = end
+    
+        
+    ### NOISE ###    
+    auc0_noise = []
+    auc2_noise = []
+    for s in sigmas:
+        auc0_noise_s = []
+        auc2_noise_s = []
+        for ep in range(len(at_epoch)):
+            noise = torch.Tensor(np.random.normal(offset,s,(len(BvsUDSG_inputs),67)))
+            noise_predictions0 = model0[ep](BvsUDSG_inputs + noise).detach().numpy()
+            noise_predictions2 = model2[ep](BvsUDSG_inputs + noise).detach().numpy()
+
+            fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],noise_predictions0[:,0])
+            auc0_noise_s.append(metrics.auc(fpr,tpr))
+            
+            fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],noise_predictions2[:,0])
+            auc2_noise_s.append(metrics.auc(fpr,tpr))
+        auc0_noise.append(auc0_noise_e)
+        auc2_noise.append(auc2_noise_e)
+    
+    with open('/home/um106329/aisafety/models/weighted/compare/auc/auc0_noise.data', 'wb') as file:
+        pickle.dump(auc0_noise, file)
+    
+    with open('/home/um106329/aisafety/models/weighted/compare/auc/auc2_noise.data', 'wb') as file:
+        pickle.dump(auc2_noise, file)
+    
+    
+    auc0_noise_diff = [[auc0_noise[s][ep] - auc0_raw[ep] for ep in range(len(at_epoch))] for s in range(len(sigmas))]
+    auc2_noise_diff = [[auc2_noise[s][ep] - auc2_raw[ep] for ep in range(len(at_epoch))] for s in range(len(sigmas))]
+    auc0_noise_diff_rel = [[(auc0_noise[s][ep] - auc0_raw[ep]) / auc0_raw[ep] for ep in range(len(at_epoch))] for s in range(len(sigmas))]
+    auc2_noise_diff_rel = [[(auc2_noise[s][ep] - auc2_raw[ep]) / auc2_raw[ep] for ep in range(len(at_epoch))] for s in range(len(sigmas))]
+    auc0_noise_rel = [[auc0_noise[s][ep] / auc0_raw[ep] for ep in range(len(at_epoch))] for s in range(len(sigmas))]
+    auc2_noise_rel = [[auc2_noise[s][ep] / auc2_raw[ep] for ep in range(len(at_epoch))] for s in range(len(sigmas))]
+    
+    
+    end = time.time()
+    print(f"Time to create Noise AUCs: {np.floor((end-start)/60)} min {np.ceil((end-start)%60)} s")
+    start = end
+    
+    
+    ### FGSM ###
+    '''
+    auc0_fgsm = []
+    auc2_fgsm = []
+    for e in epsilons:
+        auc0_fgsm_e = []
+        auc2_fgsm_e = []
+        for ep in range(len(at_epoch)):
+            adv_inputs0 = fgsm_attack(e,reduced=reduced,model=0,epoch=ep)
+            adv_inputs2 = fgsm_attack(e,reduced=reduced,model=2,epoch=ep)
+            fgsm_predictions0 = model0[ep](adv_inputs0).detach().numpy()
+            fgsm_predictions2 = model2[ep](adv_inputs2).detach().numpy()
+
+            fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions0[:,0])
+            auc0_fgsm_e.append(metrics.auc(fpr,tpr))
+            auc0_fgsm_e.append(ep)
+            fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],fgsm_predictions2[:,0])
+            auc2_fgsm_e.append(metrics.auc(fpr,tpr))
+            auc2_fgsm_e.append(ep)
+            del adv_inputs0
+            del fgsm_predictions0
+            del adv_inputs2
+            del fgsm_predictions2
+            gc.collect()
+        auc0_fgsm.append(auc0_fgsm_e)
+        auc2_fgsm.append(auc2_fgsm_e)
+    #print(len(at_epoch), len(auc0_raw))
+    #print(len(at_epoch), len(auc0_fgsm))
+    auc0_fgsm_diff = [[auc0_fgsm[s][ep] - auc0_raw[ep] for ep in range(len(at_epoch))] for s in range(len(epsilons))]
+    auc2_fgsm_diff = [[auc2_fgsm[s][ep] - auc2_raw[ep] for ep in range(len(at_epoch))] for s in range(len(epsilons))]
+    auc0_fgsm_diff_rel = [[(auc0_fgsm[s][ep] - auc0_raw[ep]) / auc0_raw[ep] for ep in range(len(at_epoch))] for s in range(len(epsilons))]
+    auc2_fgsm_diff_rel = [[(auc2_fgsm[s][ep] - auc2_raw[ep]) / auc2_raw[ep] for ep in range(len(at_epoch))] for s in range(len(epsilons))]
+    auc0_fgsm_rel = [[auc0_fgsm[s][ep] / auc0_raw[ep] for ep in range(len(at_epoch))] for s in range(len(epsilons))]
+    auc2_fgsm_rel = [[auc2_fgsm[s][ep] / auc2_raw[ep] for ep in range(len(at_epoch))] for s in range(len(epsilons))]
+    
+    end = time.time()
+    print(f"Time to create FGSM AUCs: {np.floor((end-start)/60)} min {np.ceil((end-start)%60)} s")
+    start = end
+    '''
+    
+    
+    ######### PLOTTING #########
+    ## Just AUC over Epoch #####
+    
+    ## "Delta AUC" over Epoch ##
+
+    
+    '''
+    One plot per fixed weighting method.
+        For the different sigmas (epsilons), plot the difference of the disturbed AUC and the raw AUC per epoch.
+        That would be one line per value for sigma or epsilon on each plot.
+    '''
+    
+    
+    # Noise
+    for method in [0,2]:
+        plt.figure(5,[15,15])
+        plt.xlabel('Epoch')
+        plt.ylabel('Difference disturbed AUC to raw AUC')
+        if method == 0:
+            plt.title(f'Difference disturbed to raw AUC B vs UDSG with noise\n Evaluated on {len_test} jets, No weighting')
+        else:
+            plt.title(f'Difference disturbed to raw AUC B vs UDSG with noise\n Evaluated on {len_test} jets, 1 / rel. freq. weighting')
+        for i, s in enumerate(sigmas):
+            if method == 0:
+                plt.plot(at_epoch,auc0_noise_diff[i],label=f'$\sigma={s}$')
+            else:
+                plt.plot(at_epoch,auc2_noise_diff[i],label=f'$\sigma={s}$')
+
+        if method == 0:
+            plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/compare_auc_as_is_diff_noise_v1.png', bbox_inches='tight', dpi=300)
+        else:
+            plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/compare_auc_new_diff_noise_v1.png', bbox_inches='tight', dpi=300)
+        plt.show(block=False)
+        time.sleep(5)
+        plt.close('all')
+        gc.collect(2)
+    '''        
+    # FGSM
+    for method in [0,2]:
+        plt.figure(5,[15,15])
+        plt.xlabel('Epoch')
+        plt.ylabel('Difference disturbed AUC to raw AUC')
+        if reduced:
+            if method == 0:
+                plt.title(f'Difference disturbed to raw AUC B vs UDSG with reduced FGSM\n Evaluated on {len_test} jets, No weighting')
+            else:
+                plt.title(f'Difference disturbed to raw AUC B vs UDSG with reduced FGSM\n Evaluated on {len_test} jets, 1 / rel. freq. weighting')
+        else:
+            if method == 0:
+                plt.title(f'Difference disturbed to raw AUC B vs UDSG with full FGSM\n Evaluated on {len_test} jets, No weighting')
+            else:
+                plt.title(f'Difference disturbed to raw AUC B vs UDSG with full FGSM\n Evaluated on {len_test} jets, 1 / rel. freq. weighting')
+        for i, e in enumerate(epsilons):
+            if method == 0:
+                plt.plot(at_epoch,auc0_fgsm_diff[i],label=f'$\epsilon={e}$')
+            else:
+                plt.plot(at_epoch,auc2_fgsm_diff[i],label=f'$\epsilon={e}$')
+
+        if method == 0:
+            plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/compare_auc_as_is_diff_fgsm_reduced_{reduced}_v1.png', bbox_inches='tight', dpi=300)
+        else:
+            plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/compare_auc_new_diff_fgsm_reduced_{reduced}_v1.png', bbox_inches='tight', dpi=300)
+        plt.show(block=False)
+        time.sleep(5)
+        plt.close('all')
+        gc.collect(2)
+     '''
+        
+#compare_auc([0.03,0.05,0.1,0.3],[0.01,0.03,0.05,0.1])
+compare_auc([0.03,0.05,0.1,0.3],[0.01,0.1])
