@@ -5,6 +5,8 @@ import mplhep as hep
 
 import torch
 import torch.nn as nn
+from torch.utils.data.sampler import WeightedRandomSampler
+from torch.utils.data import TensorDataset, ConcatDataset
 
 from sklearn import metrics
 
@@ -24,7 +26,7 @@ device = torch.device("cpu")
 plt.style.use(hep.cms.style.ROOT)
 colorcode = ['firebrick','magenta','cyan','darkgreen']
 
-
+oversampling = False
 
 at_epoch = 120
 
@@ -57,6 +59,8 @@ DeepCSV_testset = np.concatenate([torch.load(ti) for ti in DeepCSV_testset_file_
 print('DeepCSV test done')
 
 jetFlavour = test_targets+1
+
+
 
 
 
@@ -191,15 +195,34 @@ model.load_state_dict(checkpoint["model_state_dict"])
 
 model.to(device)
 
-
-
-
 #evaluate network on inputs
 model.eval()
-predictions_new = model(test_inputs).detach().numpy()
+
+
+if oversampling == False:
+    predictions_new = model(test_inputs).detach().numpy()
+else:
+    '''
+        Derive weights for imbalanced classes during evaluation and create testloader
+        ToDo
+    '''
+    # https://towardsdatascience.com/address-class-imbalance-easily-with-pytorch-bb540497d2a6
+    # https://stackoverflow.com/questions/60812032/using-weightedrandomsampler-in-pytorch
+    test_counts = [1447281, 693971, 3139794, 18579170]
+    sumtest = sum(test_counts)
+
+    unnormalized_weight_vector = [sumtest/test_counts[i] for i in range(4)]
+    weights = [unnormalized_weight_vector[int(test_targets[i])] for i in range(10000)]
+
+    sampler = WeightedRandomSampler(torch.DoubleTensor(weights), 10000)
+    alltestinout = ConcatDataset(TensorDataset(test_inputs[:10000],test_targets[:10000]))
+    testloader = torch.utils.data.DataLoader(alltestinout, batch_size=1, shuffle=False, num_workers=0, pin_memory=True)
+    for ba, (i,j) in enumerate(testloader):
+        if ba == 0:
+            predictions_new = model(i).detach().numpy()
+        else:
+            predictions_new = np.concatenate(predictions_new, model(i).detach().numpy())
 print('predictions with new weighting method done')
-
-
 
 
 def compare_hist():
@@ -261,7 +284,7 @@ def compare_hist():
     ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
     #ax2.set_ylim(0, 2.25e7)
     fig.suptitle(f'Classifier and DeepCSV outputs\n After {at_epoch} epochs, evaluated on {len_test} jets')
-    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_hist_all.png', bbox_inches='tight', dpi=300)
+    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_hist_all_weighted_sampler.png', bbox_inches='tight', dpi=300)
     gc.collect()
     plt.show(block=False)
     time.sleep(5)
@@ -317,7 +340,7 @@ def do_hist(weighting = 1):
     ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
     ax2.set_ylim(0, 2.25e7)
     fig.suptitle(f'Classifier and DeepCSV outputs, {method}\n After {at_epoch} epochs, evaluated on {len_test} jets')
-    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_hist_{weighting}.png', bbox_inches='tight', dpi=300)
+    fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_hist_{weighting}_weighted_sampler.png', bbox_inches='tight', dpi=300)
     gc.collect()
     plt.show(block=False)
     time.sleep(5)
@@ -327,13 +350,13 @@ def do_hist(weighting = 1):
     gc.collect(2)
     
     
-do_hist(0)
+#do_hist(0)
 #do_hist(1)
-do_hist(2)
-compare_hist()
+#do_hist(2)
+#compare_hist()
 
 
-
+'''
 #plot some ROC curves
 fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,17],num=4)
 fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==0 else 0) for i in range(len(test_targets))],predictions_as_is[:,0])
@@ -404,11 +427,89 @@ ax1.get_legend().remove(), ax2.get_legend().remove(), ax3.get_legend().remove()
 #ax4.legend(['Classifier: Without Weighting', 'Classifier: 1-rel.freq. weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
 ax4.legend(['Classifier: Without Weighting','Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
 fig.suptitle(f'ROCs for b, bb, c and light jets\n After {at_epoch} epochs, evaluated on {len_test} jets')
-fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_roc.png', bbox_inches='tight', dpi=300)
+fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_roc_weighted_sampler.png', bbox_inches='tight', dpi=300)
+gc.collect(2)
+'''
+
+
+
+'''
+    No weighting alone (for DPG, where b and c alone will be shown)
+'''
+fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==0 else 0) for i in range(len(test_targets))],predictions_as_is[:,0])
+plt.plot(fpr,tpr)
+print(f"auc for b-tagging without weighting: {metrics.auc(fpr,tpr)}")
+fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==0 else 0) for i in range(len(test_targets))],DeepCSV_testset[:,0])
+plt.plot(fpr,tpr)
+print(f"auc for b-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
+plt.legend(['Classifier','DeepCSV'],loc='lower right')
+plt.xlabel('false positive rate')
+plt.ylabel('true positive rate')
+plt.title(f'ROC b tagging after {at_epoch} epochs,\nevaluated on {len_test} jets')
+plt.savefig(f'/home/um106329/aisafety/dpg21/roc_b_tagging_{at_epoch}_epochs_no_weighting.svg', bbox_inches='tight', facecolor='w', transparent=False)
+plt.show(block=False)
+time.sleep(5)
+plt.close('all')
+gc.collect(2)
+
+fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==1 else 0) for i in range(len(test_targets))],predictions_as_is[:,1])
+plt.plot(fpr,tpr)
+print(f"auc for bb-tagging without weighting: {metrics.auc(fpr,tpr)}")
+fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==1 else 0) for i in range(len(test_targets))],DeepCSV_testset[:,1])
+plt.plot(fpr,tpr)
+print(f"auc for bb-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
+plt.legend(['Classifier','DeepCSV'],loc='lower right')
+plt.xlabel('false positive rate')
+plt.ylabel('true positive rate')
+plt.title(f'ROC bb tagging after {at_epoch} epochs,\nevaluated on {len_test} jets')
+plt.savefig(f'/home/um106329/aisafety/dpg21/roc_bb_tagging_{at_epoch}_epochs_no_weighting.svg', bbox_inches='tight', facecolor='w', transparent=False)
+plt.show(block=False)
+time.sleep(5)
+plt.close('all')
+gc.collect(2)
+
+fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==2 else 0) for i in range(len(test_targets))],predictions_as_is[:,2])
+plt.plot(fpr,tpr)
+print(f"auc for c-tagging without weighting: {metrics.auc(fpr,tpr)}")
+fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==2 else 0) for i in range(len(test_targets))],DeepCSV_testset[:,2])
+plt.plot(fpr,tpr)
+print(f"auc for c-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
+plt.legend(['Classifier','DeepCSV'],loc='lower right')
+plt.xlabel('false positive rate')
+plt.ylabel('true positive rate')
+plt.title(f'ROC c tagging after {at_epoch} epochs,\nevaluated on {len_test} jets')
+plt.savefig(f'/home/um106329/aisafety/dpg21/roc_c_tagging_{at_epoch}_epochs_no_weighting.svg', bbox_inches='tight', facecolor='w', transparent=False)
+plt.show(block=False)
+time.sleep(5)
+plt.close('all')
+gc.collect(2)
+
+fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==3 else 0) for i in range(len(test_targets))],predictions_as_is[:,3])
+plt.plot(fpr,tpr)
+print(f"auc for udsg-tagging without weighting: {metrics.auc(fpr,tpr)}")
+fpr,tpr,thresholds = metrics.roc_curve([(1 if test_targets[i]==3 else 0) for i in range(len(test_targets))],DeepCSV_testset[:,3])
+plt.plot(fpr,tpr)
+print(f"auc for udsg-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
+plt.legend(['Classifier','DeepCSV'],loc='lower right')
+plt.xlabel('false positive rate')
+plt.ylabel('true positive rate')
+plt.title(f'ROC udsg tagging after {at_epoch} epochs,\nevaluated on {len_test} jets')
+plt.savefig(f'/home/um106329/aisafety/dpg21/roc_udsg_tagging_{at_epoch}_epochs_no_weighting.svg', bbox_inches='tight', facecolor='w', transparent=False)
+plt.show(block=False)
+time.sleep(5)
+plt.close('all')
 gc.collect(2)
 
 
 
+
+
+
+'''
+    B vs Light jets
+'''
+
+'''
 BvsUDSG_inputs = torch.cat((test_inputs[jetFlavour==1],test_inputs[jetFlavour==4]))
 del gc.garbage[:]
 del test_inputs
@@ -423,11 +524,10 @@ del predictions_new
 BvsUDSG_DeepCSV = np.concatenate((DeepCSV_testset[jetFlavour==1],DeepCSV_testset[jetFlavour==4]))
 del DeepCSV_testset
 gc.collect()
+'''
 
-
-
+'''
 # plot ROC BvsUDSG
-
 fig = plt.figure(figsize=[15,15],num=40)
 fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_predictions_as_is[:,0])
 plt.plot(fpr,tpr)
@@ -465,5 +565,25 @@ plt.ylim(-0.05,1.05)
 plt.legend(['Classifier: Without Weighting', 'Classifier: 1/rel.freq. weighting','DeepCSV'],loc='lower right')
 #plt.xlim(0,0.1)
 #plt.ylim(0.4,0.9)
-fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_roc_BvsUDSG.png', bbox_inches='tight', dpi=300)
+fig.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/compare_roc_BvsUDSG_weighted_sampler.png', bbox_inches='tight', dpi=300)
+'''
 
+
+'''
+    No weighting alone (for DPG)
+
+fig = plt.figure(figsize=[15,15],num=40)
+fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_predictions_as_is[:,0])
+plt.plot(fpr,tpr)
+print(f"auc for B vs UDSG as is: {metrics.auc(fpr,tpr)}")
+fpr,tpr,thresholds = metrics.roc_curve([(1 if BvsUDSG_targets[i]==0 else 0) for i in range(len(BvsUDSG_targets))],BvsUDSG_DeepCSV[:,0])
+plt.plot(fpr,tpr)
+print(f"auc for B vs UDSG DeepCSV: {metrics.auc(fpr,tpr)}")
+plt.xlabel('mistag rate')
+plt.ylabel('efficiency')
+plt.title(f'ROC for b vs. udsg after {at_epoch} epochs')
+plt.xlim(-0.05,1.05)
+plt.ylim(-0.05,1.05)
+plt.legend(['Classifier', 'DeepCSV'],loc='lower right')
+fig.savefig(f'/home/um106329/aisafety/dpg21/roc_b_vs_light_{at_epoch}_epochs_no_weighting.svg', bbox_inches='tight', facecolor='w', transparent=False)
+'''
