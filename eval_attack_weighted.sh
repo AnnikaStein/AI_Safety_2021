@@ -12,7 +12,7 @@
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=7:50:00
+#SBATCH --time=10:50:00
 
 #SBATCH --account=rwth0583
 
@@ -31,4 +31,3 @@ cd /home/um106329/aisafety
 source ~/miniconda3/bin/activate
 conda activate my-env
 python3 eval_attack_weighted.py
-
