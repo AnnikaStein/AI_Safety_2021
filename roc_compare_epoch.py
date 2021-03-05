@@ -24,12 +24,12 @@ device = torch.device("cpu")
 #This is just some plot styling
 plt.style.use(hep.cms.style.ROOT)
 colormapping = ['blue','','','','purple','red','chocolate','grey']
-new_colors_all = ['darkblue', 'orange','springgreen', 'red', 'dodgerblue', 'gold', 'magenta']
+new_colors_all = ['darkblue', 'orange','forestgreen', 'red', 'dodgerblue', 'gold', 'magenta']
 
 
-at_epoch = [20,40,60,80,100,120]
+#at_epoch = [20,40,60,80,100,120]
 #at_epoch = [i for i in range(1,121)]
-#at_epoch = [20,70,120]
+at_epoch = [20,70,120]
 
 NUM_DATASETS = 200
 
@@ -290,7 +290,7 @@ def compare():
     plt.ylim(-0.05,1.05)
     plt.xlabel('mistag rate')
     plt.ylabel('efficiency')
-    plt.title(f'ROCs B vs UDSG, evaluated on {len_test} test jets\n No weighting')
+    plt.title(f'ROCs B vs UDSG, evaluated on {len_test} test jets')
     
         
     for i in range(len(at_epoch)):
@@ -301,7 +301,8 @@ def compare():
     
     plt.legend(legDCSV, title = 'Epoch')
     
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/roc_compare_epoch_as_is_{n_diff_epochs}_different_epochs_v2.png', bbox_inches='tight', dpi=300)
+    #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/roc_compare_epoch_as_is_{n_diff_epochs}_different_epochs_v2.svg', bbox_inches='tight')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_roc_compare_epoch_as_is_{n_diff_epochs}_different_epochs_v2.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -322,7 +323,8 @@ def compare():
     
     plt.legend(legDCSV, title = 'Epoch')
     
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/roc_compare_epoch_new_{n_diff_epochs}_different_epochs_v4.png', bbox_inches='tight', dpi=300)
+    #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/roc_compare_epoch_new_{n_diff_epochs}_different_epochs_v2.svg', bbox_inches='tight')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_roc_compare_epoch_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -363,7 +365,7 @@ def apply_noise(magn=[1],offset=[0]):
     plt.ylim(-0.05,1.05)
     plt.xlabel('mistag rate')
     plt.ylabel('efficiency')
-    plt.title(f'ROCs B vs UDSG with noise, evaluated on {len_test} jets\n No weighting')
+    plt.title(f'ROCs B vs UDSG with noise, evaluated on {len_test} jets')
     
     
     for i in range(len(at_epoch)):
@@ -374,8 +376,8 @@ def apply_noise(magn=[1],offset=[0]):
     plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')
     plt.legend(title='Epoch')
     
-    
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_noise_{sigm}_as_is_{n_diff_epochs}_different_epochs_v4.png', bbox_inches='tight', dpi=300)
+    #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_noise_{sigm}_as_is_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_noise_{sigm}_as_is_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -398,7 +400,8 @@ def apply_noise(magn=[1],offset=[0]):
     plt.legend(title='Epoch')
     
     
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_noise_{sigm}_new_{n_diff_epochs}_different_epochs_v4.png', bbox_inches='tight', dpi=300)
+    #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_noise_{sigm}_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_noise_{sigm}_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -526,9 +529,9 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     plt.xlabel('mistag rate')
     plt.ylabel('efficiency')
     if reduced:
-        plt.title(f'ROCs B vs UDSG with reduced FGSM\n Evaluated on {len_test} jets, no weighting')
+        plt.title(f'ROCs B vs UDSG with reduced FGSM\n Evaluated on {len_test} jets')
     else:
-        plt.title(f'ROCs B vs UDSG with full FGSM\n Evaluated on {len_test} jets, no weighting')
+        plt.title(f'ROCs B vs UDSG with full FGSM\n Evaluated on {len_test} jets')
   
         
     for i in range(len(at_epoch)):
@@ -537,7 +540,7 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     
     plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')    
     plt.legend(title='Epoch')
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_{epsi}_fgsm_reduced_{reduced}_as_is_{n_diff_epochs}_different_epochs_v5.png', bbox_inches='tight', dpi=300)
+    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_{epsi}_fgsm_reduced_{reduced}_as_is_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -560,7 +563,8 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     
     plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')    
     plt.legend(title='Epoch')
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_{epsi}_fgsm_reduced_{reduced}_new_{n_diff_epochs}_different_epochs_v5.png', bbox_inches='tight', dpi=300)
+    #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_{epsi}_fgsm_reduced_{reduced}_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_{epsi}_fgsm_reduced_{reduced}_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -568,7 +572,7 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     
 
 #compare()    
-#apply_noise([0,0.1])    
+apply_noise([0,0.3])    
 
 #execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
 
@@ -700,7 +704,7 @@ def compare_auc(sigmas=[0.1],epsilons=[0.01],reduced=True,offset=[0]):
         plt.xlabel('Epoch')
         plt.ylabel('Difference disturbed AUC to raw AUC')
         if method == 0:
-            plt.title(f'Difference disturbed to raw AUC B vs UDSG with noise\n Evaluated on {len_test} jets, No weighting')
+            plt.title(f'Difference disturbed to raw AUC B vs UDSG with noise\n Evaluated on {len_test} jets')
         else:
             plt.title(f'Difference disturbed to raw AUC B vs UDSG with noise\n Evaluated on {len_test} jets, 1 / rel. freq. weighting')
         for i, s in enumerate(sigmas):
@@ -725,12 +729,12 @@ def compare_auc(sigmas=[0.1],epsilons=[0.01],reduced=True,offset=[0]):
         plt.ylabel('Difference disturbed AUC to raw AUC')
         if reduced:
             if method == 0:
-                plt.title(f'Difference disturbed to raw AUC B vs UDSG with reduced FGSM\n Evaluated on {len_test} jets, No weighting')
+                plt.title(f'Difference disturbed to raw AUC B vs UDSG with reduced FGSM\n Evaluated on {len_test} jets')
             else:
                 plt.title(f'Difference disturbed to raw AUC B vs UDSG with reduced FGSM\n Evaluated on {len_test} jets, 1 / rel. freq. weighting')
         else:
             if method == 0:
-                plt.title(f'Difference disturbed to raw AUC B vs UDSG with full FGSM\n Evaluated on {len_test} jets, No weighting')
+                plt.title(f'Difference disturbed to raw AUC B vs UDSG with full FGSM\n Evaluated on {len_test} jets')
             else:
                 plt.title(f'Difference disturbed to raw AUC B vs UDSG with full FGSM\n Evaluated on {len_test} jets, 1 / rel. freq. weighting')
         for i, e in enumerate(epsilons):
@@ -750,4 +754,4 @@ def compare_auc(sigmas=[0.1],epsilons=[0.01],reduced=True,offset=[0]):
      '''
         
 #compare_auc([0.03,0.05,0.1,0.3],[0.01,0.03,0.05,0.1])
-compare_auc([0.03,0.05,0.1,0.3],[0.01,0.1])
+#compare_auc([0.03,0.05,0.1,0.3],[0.01,0.1])
