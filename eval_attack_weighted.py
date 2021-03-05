@@ -27,7 +27,7 @@ colormapping = ['blue','','','','purple','red','chocolate','grey']
 
 
 
-at_epoch = 1
+at_epoch = 120
 
 NUM_DATASETS = 200
 
@@ -65,7 +65,7 @@ print('DeepCSV test done')
 jetFlavour = test_targets+1
 
 
-'''
+
 
 '''
 
@@ -105,16 +105,16 @@ model.to(device)
 
 #evaluate network on inputs
 model.eval()
-predictions_as_is = model(test_inputs).detach().numpy()
-print('predictions without weighting done')
-'''
+#predictions_as_is = model(test_inputs).detach().numpy()
+#print('predictions without weighting done')
+
 
 
 '''
 
     Predictions: With first weighting method
     
-'''
+
 # as calculated in dataset_info.ipynb
 allweights = [0.9393934969162745, 0.9709644530642717, 0.8684253665882813, 0.2212166834311725]
 class_weights = torch.FloatTensor(allweights).to(device)
@@ -151,10 +151,10 @@ model.to(device)
 
 #evaluate network on inputs
 model.eval()
-predictions = model(test_inputs).detach().numpy()
-print('predictions with first weighting method done')
+#predictions = model(test_inputs).detach().numpy()
+#print('predictions with first weighting method done')
 
-'''
+
 
 '''
 
@@ -199,8 +199,8 @@ model.to(device)
 
 #evaluate network on inputs
 model.eval()
-predictions_new = model(test_inputs).detach().numpy()
-print('predictions with new weighting method done')
+#predictions_new = model(test_inputs).detach().numpy()
+#print('predictions with new weighting method done')
 
 '''
 
@@ -217,9 +217,9 @@ with open('/home/um106329/aisafety/length_cleaned_data_test.npy', 'rb') as f:
 BvsUDSG_inputs = torch.cat((test_inputs[jetFlavour==1],test_inputs[jetFlavour==4]))
 BvsUDSG_targets = torch.cat((test_targets[jetFlavour==1],test_targets[jetFlavour==4]))
 #BvsUDSG_predictions_as_is = np.concatenate((predictions_as_is[jetFlavour==1],predictions_as_is[jetFlavour==4]))
-BvsUDSG_predictions = np.concatenate((predictions[jetFlavour==1],predictions[jetFlavour==4]))
+#BvsUDSG_predictions = np.concatenate((predictions[jetFlavour==1],predictions[jetFlavour==4]))
 #BvsUDSG_predictions_new = np.concatenate((predictions_new[jetFlavour==1],predictions_new[jetFlavour==4]))
-BvsUDSG_DeepCSV = np.concatenate((DeepCSV_testset[jetFlavour==1],DeepCSV_testset[jetFlavour==4]))
+#BvsUDSG_DeepCSV = np.concatenate((DeepCSV_testset[jetFlavour==1],DeepCSV_testset[jetFlavour==4]))
 gc.collect()
 
 
@@ -327,7 +327,11 @@ def apply_noise(magn=[1],offset=[0]):
     legend = [f'$\sigma={m}$' for m in magn]
     legend[0] = 'undisturbed'
     plt.legend(legend)
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/noise.png', bbox_inches='tight', dpi=300)
+    #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/noise.png', bbox_inches='tight', dpi=300)
+    sigm = ''
+    for sig in magn:
+        sigm = sigm + '_' + str(sig).replace('.','')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{at_epoch}_noise{sigm}_no_weighting.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -379,6 +383,25 @@ def fgsm_attack(epsilon=1e-1,sample=BvsUDSG_inputs,targets=BvsUDSG_targets,reduc
                     for i in [41, 48, 49, 56]:
                         xadv[:,i][defaults] = sample[:,i][defaults]
                     break
+            vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
+            vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
+            vars_with_0_defaults.extend([18, 19, 20, 21])               # trackEtaRel_0 to _3
+            vars_with_0_defaults.extend([22, 23, 24, 25, 26, 27])       # trackJetDistVal_0 to _5
+            vars_with_0_defaults.extend([29, 30, 31, 32, 33, 34])       # trackPtRatio_0 to _5
+            vars_with_0_defaults.extend([35, 36, 37, 38, 39, 40])       # trackPtRel_0 to _5
+            for i in vars_with_0_defaults:
+                defaults = np.zeros(len(sample))
+                for l, s in enumerate(length_data_test[:NUM_DATASETS]):
+                    scalers = allscalers[l]
+                    if l == 0:
+                        defaults[:int(s)] = abs(scalers[i].inverse_transform(sample[:int(s),i].cpu())) < 0.001
+                    else:
+                        defaults[int(length_data_test[l-1]) : int(s)] = abs(scalers[i].inverse_transform(sample[int(length_data_test[l-1]) : int(s),i].cpu())) < 0.001
+                        
+                if np.sum(defaults) != 0:
+                    for i in vars_with_0_defaults:
+                        xadv[:,i][defaults] = sample[:,i][defaults]
+                    break
         return xadv.detach()
     
     
@@ -423,7 +446,11 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     legend = [f'$\epsilon={e}$' for e in epsilon]
     legend[0] = 'undisturbed'
     plt.legend(legend)
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/fgsm_reduced_{reduced}.png', bbox_inches='tight', dpi=300)
+    #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/fgsm_reduced_{reduced}.png', bbox_inches='tight', dpi=300)
+    epsi = ''
+    for eps in epsilon:
+        epsi = epsi + '_' + str(eps).replace('.','')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{at_epoch}_fgsm{epsi}_no_weighting.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -433,6 +460,7 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     
 
     
-apply_noise([0,0.1,0.2,0.3,0.4,0.5,1,2])    
-execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
-execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],True)
+#apply_noise([0,0.05,0.1,0.2,0.3,0.4,0.5,1])    
+#execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
+#execute_fgsm([0,0.005,0.01,0.02,0.03,0.04,0.05,0.1],True)
+execute_fgsm([0,0.005,0.01,0.02,0.03,0.04,0.05],True)
