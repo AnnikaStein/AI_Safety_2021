@@ -459,7 +459,7 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         
         for i, m in enumerate(epsilon):
             if s > 0:
-                xadv = np.concatenate((xadv, scalers[prop].inverse_transform(fgsm_attack(epsilon[i],all_inputs,all_targets,reduced=reduced, scalers=scalers, model=method)[:,prop].cpu())))
+                xadv = np.concatenate((xmagn[i], scalers[prop].inverse_transform(fgsm_attack(epsilon[i],all_inputs,all_targets,reduced=reduced, scalers=scalers, model=method)[:,prop].cpu())))
                 xmagn[i] = xadv
             else:
                 xadv = scalers[prop].inverse_transform(fgsm_attack(epsilon[i],all_inputs,all_targets,reduced=reduced, scalers=scalers)[:,prop].cpu())
@@ -532,9 +532,9 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         epsi = epsi + '_' + str(eps).replace('.','')
     name_var = input_names[prop]
     if fixRange == 'no':
-        fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2.svg', bbox_inches='tight')
     else:
-        fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2.svg', bbox_inches='tight')
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -592,6 +592,7 @@ if fixRange == 'no':
         for i in range(fromVar,toVar+1):
             #compare_inputs(i,epsilon=[0,0.005,0.01],minimum=None,maximum=None,reduced=False)
             compare_inputs(i,epsilon=[0,0.005,0.01],minimum=None,maximum=None,reduced=True)
+            #compare_inputs(i,epsilon=[0,0.5,0.9],minimum=None,maximum=None,reduced=True)
 
 else:
     if attack == "noise":
@@ -845,6 +846,7 @@ else:
             apply_noise(variable=66,magn=magn,minimum=None,maximum=None)
     else:
         epsilon = [0,0.005,0.01]
+        #epsilon = [0,0.05,0.1]
         #compare_inputs(35,epsilon=[0,0.1,0.9],minimum=0,maximum=6,reduced=True)
         if fromVar == 0:
             # Jet eta
