@@ -591,8 +591,8 @@ if fixRange == 'no':
     else:    
         for i in range(fromVar,toVar+1):
             #compare_inputs(i,epsilon=[0,0.005,0.01],minimum=None,maximum=None,reduced=False)
-            compare_inputs(i,epsilon=[0,0.005,0.01],minimum=None,maximum=None,reduced=True)
-            #compare_inputs(i,epsilon=[0,0.5,0.9],minimum=None,maximum=None,reduced=True)
+            #compare_inputs(i,epsilon=[0,0.005,0.01],minimum=None,maximum=None,reduced=True)
+            compare_inputs(i,epsilon=[0,0.05,0.1],minimum=None,maximum=None,reduced=True)
 
 else:
     if attack == "noise":
@@ -845,8 +845,8 @@ else:
             #apply_noise(variable=66,magn=magn,minimum=None,maximum=None)
             apply_noise(variable=66,magn=magn,minimum=None,maximum=None)
     else:
-        epsilon = [0,0.005,0.01]
-        #epsilon = [0,0.05,0.1]
+        #epsilon = [0,0.005,0.01]
+        epsilon = [0,0.05,0.1]
         #compare_inputs(35,epsilon=[0,0.1,0.9],minimum=0,maximum=6,reduced=True)
         if fromVar == 0:
             # Jet eta
