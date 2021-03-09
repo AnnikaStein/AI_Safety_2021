@@ -74,7 +74,7 @@ print('DeepCSV test done')
 
 jetFlavour = test_targets+1
 
-
+NUM_DATASETS = 200
 
 '''
 
@@ -360,6 +360,13 @@ def apply_noise(magn=[1],offset=[0]):
         print(f'{ep}, \t Undisturbed:\t {auc2[2*i]}')
         print(f'{ep}, \t With noise (sigma={sig}):\t {auc2[2*i+1]}')
     
+    
+    
+    ##########################################################
+    ##########    Weighting method 0 starts here    ##########
+    ##########################################################
+    
+    
     plt.figure(5,[15,15])
     plt.xlim(-0.05,1.05)
     plt.ylim(-0.05,1.05)
@@ -369,20 +376,29 @@ def apply_noise(magn=[1],offset=[0]):
     
     
     for i in range(len(at_epoch)):
-        plt.plot(fprl0[2*i],tprl0[2*i],color=new_colors[i],label=f'{at_epoch[i]}, Undisturbed')
-        plt.plot(fprl0[2*i+1],tprl0[2*i+1],linestyle='dashed',color=new_colors[i],label=f'{at_epoch[i]}, $\sigma={sig}$')
+        plt.plot(fprl0[2*i],tprl0[2*i],color=new_colors[i],label=f'{at_epoch[i]}, Undisturbed', linewidth=3.0)
+        plt.plot(fprl0[2*i+1],tprl0[2*i+1],linestyle='dashed',color=new_colors[i],label=f'{at_epoch[i]}, $\sigma={sig}$', linewidth=3.0)
     
     
-    plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')
-    plt.legend(title='Epoch')
+    #plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')
+    leg = plt.legend(title='Epoch')
+    for line in leg.get_lines():
+        line.set_linewidth(3)
+        
+    plt.ylim(bottom=0.5)
     
     #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_noise_{sigm}_as_is_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
-    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_noise_{sigm}_as_is_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_noise_{sigm}_as_is_{n_diff_epochs}_different_epochs_v7.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
     gc.collect(2)
 
+    
+    ##########################################################
+    ##########    Weighting method 2 starts here    ##########
+    ##########################################################
+    
 
     plt.figure(5,[15,15])
     plt.xlim(-0.05,1.05)
@@ -393,15 +409,18 @@ def apply_noise(magn=[1],offset=[0]):
     
     
     for i in range(len(at_epoch)):
-        plt.plot(fprl2[2*i],tprl2[2*i],color=new_colors[i],label=f'{at_epoch[i]}, Undisturbed')
-        plt.plot(fprl2[2*i+1],tprl2[2*i+1],linestyle='dashed',color=new_colors[i],label=f'{at_epoch[i]}, $\sigma={sig}$')
+        plt.plot(fprl2[2*i],tprl2[2*i],color=new_colors[i],label=f'{at_epoch[i]}, Undisturbed', linewidth=3.0)
+        plt.plot(fprl2[2*i+1],tprl2[2*i+1],linestyle='dashed',color=new_colors[i],label=f'{at_epoch[i]}, $\sigma={sig}$', linewidth=3.0)
     
-    plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')
-    plt.legend(title='Epoch')
-    
+    #plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')
+    leg = plt.legend(title='Epoch')
+    for line in leg.get_lines():
+        line.set_linewidth(3)
+        
+    plt.ylim(bottom=0.5)
     
     #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_noise_{sigm}_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
-    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_noise_{sigm}_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_noise_{sigm}_new_{n_diff_epochs}_different_epochs_v7.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -523,6 +542,11 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
         print(f'{ep}, \t FGSM (epsilon={eps}):\t {auc2[2*i+1]}')
     
     
+    ##########################################################
+    ##########    Weighting method 0 starts here    ##########
+    ##########################################################
+    
+    
     plt.figure(5,[15,15])
     plt.xlim(-0.05,1.05)
     plt.ylim(-0.05,1.05)
@@ -535,16 +559,26 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
   
         
     for i in range(len(at_epoch)):
-        plt.plot(fprl0[2*i],tprl0[2*i],color=new_colors[i],label=f'{at_epoch[i]}, Undisturbed')
-        plt.plot(fprl0[2*i+1],tprl0[2*i+1],linestyle='dashed',color=new_colors[i],label=f'{at_epoch[i]}, $\epsilon={eps}$')
+        plt.plot(fprl0[2*i],tprl0[2*i],color=new_colors[i],label=f'{at_epoch[i]}, Undisturbed', linewidth=3.0)
+        plt.plot(fprl0[2*i+1],tprl0[2*i+1],linestyle='dashed',color=new_colors[i],label=f'{at_epoch[i]}, $\epsilon={eps}$', linewidth=3.0)
     
-    plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')    
-    plt.legend(title='Epoch')
-    plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_{epsi}_fgsm_reduced_{reduced}_as_is_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
+    #plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')    
+    leg = plt.legend(title='Epoch')
+    for line in leg.get_lines():
+        line.set_linewidth(3)
+        
+    plt.ylim(bottom=0.5)
+    
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_{epsi}_fgsm_reduced_{reduced}_as_is_{n_diff_epochs}_different_epochs_v7.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
     gc.collect(2)
+    
+    
+    ##########################################################
+    ##########    Weighting method 2 starts here    ##########
+    ##########################################################
     
     
     plt.figure(5,[15,15])
@@ -558,13 +592,18 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
         plt.title(f'ROCs B vs UDSG with full FGSM\n Evaluated on {len_test} jets, 1 / rel. freq. weighting')
   
     for i in range(len(at_epoch)):
-        plt.plot(fprl2[2*i],tprl2[2*i],color=new_colors[i],label=f'{at_epoch[i]}, Undisturbed')
-        plt.plot(fprl2[2*i+1],tprl2[2*i+1],linestyle='dashed',color=new_colors[i],label=f'{at_epoch[i]}, $\epsilon={eps}$')
+        plt.plot(fprl2[2*i],tprl2[2*i],color=new_colors[i],label=f'{at_epoch[i]}, Undisturbed', linewidth=3.0)
+        plt.plot(fprl2[2*i+1],tprl2[2*i+1],linestyle='dashed',color=new_colors[i],label=f'{at_epoch[i]}, $\epsilon={eps}$', linewidth=3.0)
     
-    plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')    
-    plt.legend(title='Epoch')
+    #plt.plot(fprlDeepCSV,tprlDeepCSV,label='DeepCSV')    
+    leg = plt.legend(title='Epoch')
+    for line in leg.get_lines():
+        line.set_linewidth(3)
+        
+    plt.ylim(bottom=0.5)
+    
     #plt.savefig(f'/home/um106329/aisafety/models/weighted/compare/after_{max_epoch}/compare_{epsi}_fgsm_reduced_{reduced}_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
-    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_{epsi}_fgsm_reduced_{reduced}_new_{n_diff_epochs}_different_epochs_v5.svg', bbox_inches='tight')
+    plt.savefig(f'/home/um106329/aisafety/dpg21/after_{max_epoch}_compare_{epsi}_fgsm_reduced_{reduced}_new_{n_diff_epochs}_different_epochs_v7.svg', bbox_inches='tight')
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -572,12 +611,12 @@ def execute_fgsm(epsilon=[1e-1],reduced=True):
     
 
 #compare()    
-apply_noise([0,0.3])    
+#apply_noise([0,0.3])    
 
 #execute_fgsm([0,0.01,0.02,0.03,0.04,0.05,0.1,0.2],False)
 
 
-#execute_fgsm([0,0.01],True)
+execute_fgsm([0,0.01],True)
 #execute_fgsm([0,0.1],True)
 
 
