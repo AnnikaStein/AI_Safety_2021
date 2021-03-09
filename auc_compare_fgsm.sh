@@ -12,7 +12,7 @@
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=33:50:00
+#SBATCH --time=35:50:00
 
 #SBATCH --account=rwth0583
 
@@ -30,4 +30,4 @@ cd /home/um106329/aisafety
 # module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
-python3 auc_compare_fgsm.py "all" 0 "0.005"
+python3 auc_compare_fgsm.py "all" 0 "0.03"
