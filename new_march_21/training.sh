@@ -4,21 +4,21 @@
 
 #SBATCH --ntasks-per-node=2
 
-#SBATCH --mem-per-cpu=40G
+#SBATCH --mem-per-cpu=20G
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=TRGPUnewMarch21
+#SBATCH --job-name=TRGPUnewMarch21test
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=20:10:00
+#SBATCH --time=10:10:00
 
 #SBATCH --account=rwth0583
 
 # with gpu: 
 
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 
 #SBATCH --mail-type=ALL
 
