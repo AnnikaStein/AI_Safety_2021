@@ -6,8 +6,9 @@ import mplhep as hep
 
 import torch
 import torch.nn as nn
-from torch.utils.data import TensorDataset, ConcatDataset
+from torch.utils.data import TensorDataset, ConcatDataset, WeightedRandomSampler
 
+from sklearn.utils.class_weight import compute_class_weight
 
 import time
 import random
@@ -25,27 +26,50 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 plt.style.use(hep.cms.style.ROOT)
 
 
+### Parser ###
+
+import argparse
+import ast
+
+
+parser = argparse.ArgumentParser(description="Setup for training")
+parser.add_argument("files", type=int, help="Number of files for training")
+parser.add_argument("prevep", type=int, help="Number of previously trained epochs")
+parser.add_argument("addep", type=int, help="Number of additional epochs for this training")
+parser.add_argument("wm", help="Weighting method")
+args = parser.parse_args()
+
+NUM_DATASETS = args.files
+prev_epochs = args.prevep
+epochs = args.addep
+weighting_method = args.wm
+
+
+
+
 '''
     Weighting method:
         '_as_is'  :  apply no weighting factors at all
         ''        :  with factor 1 - relative frequency per flavour category
-        '_new'    :  with factor 1 / relative frequency per flavour category        
+        '_new'    :  with factor 1 / relative frequency per flavour category
+        '_wrs'    :  using WeightedRandomSampler with n_samples / (n_classes * n_class_count)
 '''
-weighting_method = '_as_is'   
+#weighting_method = '_as_is'    # this is now controlled by the parser above
 print(f'weighting method: {weighting_method}')    
 
 # Parameters for the training and validation    
-bsize = 2000000     # this might seem large, but corresponds to bsize of 250000 for 86M training inputs
-lrate = 0.00001
-prev_epochs = 25
+bsize = 1000000     # this might seem large, but for comparison: bsize of 250000 for 86M training inputs
+lrate = 0.000005     # initial learning rate, only for first epoch
+#prev_epochs = 0   # this is now controlled by the parser above
 
 # Manually update the file path to the latest training job message
 print(f'starting to train the model after {prev_epochs} epochs that were already done')
 print(f'learning rate for this script: {lrate}')
 print(f'batch size for this script: {bsize}')
     
-NUM_DATASETS = 42
-NUM_DATASETS = 10    # just for testing
+#NUM_DATASETS = 229    # this is now controlled by the parser above
+#NUM_DATASETS = 42
+#NUM_DATASETS = 10    # just for testing
 
 with open(f"/home/um106329/aisafety/new_march_21/models/logfile{weighting_method}_{NUM_DATASETS}_files.txt", "a") as log:
     log.write(f"Setup: weighting method {weighting_method}, so far {prev_epochs} epochs done. Use lr={lrate} and bsize={bsize}.\n")
@@ -85,13 +109,27 @@ print(f"Time to load train: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60
 
 pre = time.time()
 
-trainloader = torch.utils.data.DataLoader(allin, batch_size=bsize, shuffle=True, num_workers=0, pin_memory=True)
+if weighting_method == '_wrs':
+    #weights = 1. / torch.tensor(class_sample_counts, dtype=torch.float)
+    #samples_weights = weights[torch.concat([torch.load(train_target_file_paths[f]) for f in range(NUM_DATASETS)])]
+    class_weights = compute_class_weight(
+           'balanced',
+            classes=np.array([0,1,2,3]), 
+            y=torch.cat([torch.load(train_target_file_paths[f]) for f in range(NUM_DATASETS)]).numpy())
+    sampler = WeightedRandomSampler(
+        weights=class_weights,
+        num_samples=len(class_weights),
+        replacement=True)
+    trainloader = torch.utils.data.DataLoader(allin, batch_size=bsize, sampler=sampler, num_workers=0, pin_memory=True)
+else:
+    trainloader = torch.utils.data.DataLoader(allin, batch_size=bsize, shuffle=True, num_workers=0, pin_memory=True)
 
 post = time.time()
 print(f"Time to create trainloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
 
 total_len_train = len(trainloader)
-
+total_n_train = len(trainloader.dataset)
+print(total_n_train,'\ttraining samples')
 
 
 
@@ -114,6 +152,8 @@ post = time.time()
 print(f"Time to create valloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
 
 total_len_val = len(valloader)
+total_n_val = len(valloader.dataset)
+print(total_n_val,'\tvalidation samples')
 
 
 # The new method for validation inputs is needed because the total file size for validation is too big to fit on a single gpu (16GB) that is already occupied by the model / loss 
@@ -142,7 +182,7 @@ model = nn.Sequential(nn.Linear(67, 100),
                       nn.Softmax(dim=1))
 
 if prev_epochs > 0:
-    checkpoint = torch.load(f'/home/um106329/aisafety/new_march_21/models/march2021_{prev_epochs}_epochs_v6_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets.pt')
+    checkpoint = torch.load(f'/home/um106329/aisafety/new_march_21/models/march2021_{prev_epochs}_epochs_v9_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets.pt')
     #checkpoint = torch.load(f'/home/um106329/aisafety/new_march_21/models/march2021_10_epochs_v4_GPU_weighted_as_is.pt')
     model.load_state_dict(checkpoint["model_state_dict"])
 
@@ -179,14 +219,21 @@ optimizer = torch.optim.Adam(model.parameters(), lr=lrate)
 
 if prev_epochs > 0:
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
+    '''
     # update the learning rate to the new one
     for g in optimizer.param_groups:
         print('lr: ', g['lr'], 'prev run')
         g['lr'] = lrate
         print('lr: ', g['lr'], 'after update')
+    '''
 
-
+def new_learning_rate(ep):
+    for g in optimizer.param_groups:
+        print('lr: ', g['lr'], 'prev epoch')
+        #g['lr'] = lrate/(1+ep/5)
+        g['lr'] = 0.000005
+        #print('lr: ', g['lr'], 'after update')
+        
 #The training algorithm
 
 tic = time.time()
@@ -195,7 +242,7 @@ stale_epochs, min_loss = 0, 10
 max_stale_epochs = 100
 
 # epochs to be trained with the current script (on top of the prev_epochs)
-epochs = 25
+#epochs = 1    # this is now controlled by the parser above
 times = []
 
 
@@ -207,7 +254,8 @@ with open(f"/home/um106329/aisafety/new_march_21/models/logfile{weighting_method
 
 for e in range(epochs):
     times.append(time.time())
-    
+    if prev_epochs+e >= 1:
+        new_learning_rate(prev_epochs+e)
     running_loss = 0
     model.train()
     for b, (i,j) in enumerate(trainloader):
@@ -274,19 +322,19 @@ for e in range(epochs):
             else:
                 stale_epochs += 1
             # e+1 to count from "1" instead of "0"
-            print(f"{(e+1)/epochs*100}% done. Epoch: {prev_epochs+e}\tTraining loss: {running_loss/total_len_train}\tValidation loss: {running_val_loss/total_len_val}",end='\r')
+            print(f"{(e+1)/epochs*100}% done. Epoch: {prev_epochs+e}\tTraining loss: {running_loss/total_len_train}\tValidation loss: {running_val_loss/total_len_val}",end='\n')
         loss_history.append(running_loss/total_len_train)
         #if (e+1)%np.floor(epochs/10)==0:
         #    print(f"{(e+1)/epochs*100}% done. Epoch: {prev_epochs+e}\tTraining loss: {running_loss/total_len_train}\tValidation loss: {val_loss/total_len_val}")
             
-        torch.save({"epoch": prev_epochs+e, "model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(), "loss": running_loss/total_len_train, "val_loss": running_val_loss/total_len_val}, f'/home/um106329/aisafety/new_march_21/models/march2021_{prev_epochs+(e + 1)}_epochs_v6_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets.pt')
+        torch.save({"epoch": prev_epochs+e, "model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(), "loss": running_loss/total_len_train, "val_loss": running_val_loss/total_len_val}, f'/home/um106329/aisafety/new_march_21/models/march2021_{prev_epochs+(e + 1)}_epochs_v9_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets.pt')
 toc = time.time()
 #print(f"{(e+1)/epochs*100}% done. Epoch: {e}\tTraining loss: {running_loss/total_len_train}\tValidation loss: {running_val_loss/total_len_val}\nTraining complete. Time elapsed: {np.floor((toc-tic)/60)} min {np.ceil((toc-tic)%60)} s")
 print(f"Time elapsed: {np.floor((toc-tic)/60)} min {np.ceil((toc-tic)%60)} s")
 print(f"used {NUM_DATASETS} files, {prev_epochs+epochs} epochs, dropout 0.1 4x, learning rate {lrate}")
 
 
-torch.save(model, f'/home/um106329/aisafety/new_march_21/models/march2021_{prev_epochs+epochs}_epochs_v6_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets_justModel.pt')
+torch.save(model, f'/home/um106329/aisafety/new_march_21/models/march2021_{prev_epochs+epochs}_epochs_v9_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets_justModel.pt')
 
 
 times.append(toc)
