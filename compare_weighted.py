@@ -43,6 +43,7 @@ epsilon = 0.01
 at_epoch = 120
 
 NUM_DATASETS = 200
+#NUM_DATASETS = 49  # TTtoSemilep clean (for QCD clean: 229)
 '''
 eps = str(epsilon).replace('.','')
 with open(f"/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/log_%d.txt" % NUM_DATASETS, "w+") as text_file:
@@ -193,7 +194,8 @@ model2.eval()
 
 
 
-
+'''
+# Old inputs, not completely clean, QCD
 # scalers
 scalers_file_paths = ['/work/um106329/MA/cleaned/preprocessed/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
@@ -204,7 +206,18 @@ val_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_inputs_%d.pt
 val_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 train_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
 train_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+'''
+NUM_DATASETS = 2
+# TT to Semilep clean
+scalers_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
+test_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+test_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+DeepCSV_testset_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
+val_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+val_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+train_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+train_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
 
 input_names = ['Jet_eta',
@@ -311,10 +324,69 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
             noise = torch.Tensor(np.random.normal(offset,m,(len(all_inputs),67))).to(device)
             all_inputs_noise = all_inputs + noise
             if s > 0:
-                xadv = np.concatenate((xmagn[i], scalers[variable].inverse_transform(all_inputs_noise[:][:,variable].cpu())))
-                xmagn[i] = xadv
+                xadv = scalers[variable].inverse_transform(all_inputs_noise[:][:,variable].cpu())
+                integervars = [59,63,64,65,66]
+                if variable in integervars:
+                    xadv = scalers[variable].inverse_transform(all_inputs[:][:,variable].cpu())
+                    
+                if variable in [41, 48, 49, 56]:
+                    defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
+                    if np.sum(defaults) != 0:
+                        xadv[defaults] = all_inputs[:,variable][defaults]
+                        
+                vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
+                vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
+                vars_with_0_defaults.extend([18, 19, 20, 21])               # trackEtaRel_0 to _3
+                vars_with_0_defaults.extend([22, 23, 24, 25, 26, 27])       # trackJetDistVal_0 to _5
+                vars_with_0_defaults.extend([29, 30, 31, 32, 33, 34])       # trackPtRatio_0 to _5
+                vars_with_0_defaults.extend([35, 36, 37, 38, 39, 40])       # trackPtRel_0 to _5
+                if variable in vars_with_0_defaults:
+                    defaults = abs(scalers[i].inverse_transform(all_inputs[:,variable].cpu())) < 0.001   # "floating point error" --> allow some error margin
+                    if np.sum(defaults) != 0:
+                        xadv[defaults] = all_inputs[:,variable][defaults]
+                        
+                
+                '''
+                    # For cleaned files (QCD or TT to Semileptonic)
+                '''
+                if variable in range(67):
+                    defaults = abs(scalers[i].inverse_transform(all_inputs[:,i].cpu()) + 999) < 300   # "floating point error" --> allow some error margin
+                    if np.sum(defaults) != 0:
+                        xadv[defaults] = all_inputs[:,i][defaults]
+                        
+                xadv_new = np.concatenate((xmagn[i], xadv))
+                xmagn[i] = xadv_new
             else:
                 xadv = scalers[variable].inverse_transform(all_inputs_noise[:][:,variable].cpu())
+                integervars = [59,63,64,65,66]
+                if variable in integervars:
+                    xadv = scalers[variable].inverse_transform(all_inputs[:][:,variable].cpu())
+                if variable in [41, 48, 49, 56]:
+                    defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
+                    if np.sum(defaults) != 0:
+                        if variable in [41, 48, 49, 56]:
+                            xadv = all_inputs[:,variable][defaults]
+                        break
+                vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
+                vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
+                vars_with_0_defaults.extend([18, 19, 20, 21])               # trackEtaRel_0 to _3
+                vars_with_0_defaults.extend([22, 23, 24, 25, 26, 27])       # trackJetDistVal_0 to _5
+                vars_with_0_defaults.extend([29, 30, 31, 32, 33, 34])       # trackPtRatio_0 to _5
+                vars_with_0_defaults.extend([35, 36, 37, 38, 39, 40])       # trackPtRel_0 to _5
+                if variable in vars_with_0_defaults:
+                    defaults = abs(scalers[i].inverse_transform(all_inputs[:,variable].cpu())) < 0.001   # "floating point error" --> allow some error margin
+                    if np.sum(defaults) != 0:
+                        xadv[defaults] = all_inputs[:,variable][defaults]
+                        
+                
+                '''
+                    # For cleaned files (QCD or TT to Semileptonic)
+                '''
+                if variable in range(67):
+                    defaults = abs(scalers[i].inverse_transform(all_inputs[:,i].cpu()) + 999) < 300   # "floating point error" --> allow some error margin
+                    if np.sum(defaults) != 0:
+                        xadv[defaults] = all_inputs[:,i][defaults]
+                        
                 xmagn.append(xadv)
         del test_inputs
         del val_inputs
@@ -368,9 +440,11 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
         sigm = sigm + '_' + str(sig).replace('.','')
     name_var = input_names[variable]
     if fixRange == 'no':
-        fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
     else:
-        fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -435,6 +509,12 @@ def fgsm_attack(epsilon=1e-1,sample=None,targets=None,reduced=True, scalers=None
                 defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu())) < 0.001   # "floating point error" --> allow some error margin
                 if np.sum(defaults) != 0:
                     for i in vars_with_0_defaults:
+                        xadv[:,i][defaults] = sample[:,i][defaults]
+                    break
+            for i in range(67):
+                defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) + 999) < 300   # "floating point error" --> allow some error margin
+                if np.sum(defaults) != 0:
+                    for i in range(67):
                         xadv[:,i][defaults] = sample[:,i][defaults]
                     break
         return xadv.detach()
@@ -532,9 +612,11 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         epsi = epsi + '_' + str(eps).replace('.','')
     name_var = input_names[prop]
     if fixRange == 'no':
-        fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
     else:
-        fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -608,7 +690,7 @@ else:
 
             # flightDist2DSig
             #apply_noise(variable=2,magn=magn,minimum=None,maximum=80)
-            apply_noise(variable=2,magn=magn,minimum=None,maximum=80)
+            apply_noise(variable=2,magn=magn,minimum=-10,maximum=80)
 
             # flightDist2DVal
             #apply_noise(variable=3,magn=magn,minimum=None,maximum=None)
@@ -645,10 +727,10 @@ else:
         elif fromVar == 12:
             # trackDeltaR
             #apply_noise(variable=12,magn=magn,minimum=0,maximum=0.301)
-            apply_noise(variable=12,magn=magn,minimum=-1,maximum=1)
+            #apply_noise(variable=12,magn=magn,minimum=-1,maximum=1)
 
             #apply_noise(variable=13,magn=magn,minimum=0,maximum=0.301)
-            apply_noise(variable=13,magn=magn,minimum=-1,maximum=1)
+            #apply_noise(variable=13,magn=magn,minimum=-1,maximum=1)
 
             #apply_noise(variable=14,magn=magn,minimum=0,maximum=0.5)
             apply_noise(variable=14,magn=magn,minimum=-1,maximum=1)
@@ -859,7 +941,7 @@ else:
 
             # flightDist2DSig
             #compare_inputs(2,epsilon,minimum=None,maximum=80,reduced=False)
-            compare_inputs(2,epsilon,minimum=None,maximum=80,reduced=True)
+            compare_inputs(2,epsilon,minimum=-10,maximum=80,reduced=True)
 
             # flightDist2DVal
             #compare_inputs(3,epsilon,minimum=None,maximum=None,reduced=False)
@@ -896,10 +978,10 @@ else:
         elif fromVar == 12:
             # trackDeltaR
             #compare_inputs(12,epsilon,minimum=0,maximum=0.301,reduced=False)
-            compare_inputs(12,epsilon,minimum=-1,maximum=1,reduced=True)
+            #compare_inputs(12,epsilon,minimum=-1,maximum=1,reduced=True)
 
             #compare_inputs(13,epsilon,minimum=0,maximum=0.301,reduced=False)
-            compare_inputs(13,epsilon,minimum=-1,maximum=1,reduced=True)
+            #compare_inputs(13,epsilon,minimum=-1,maximum=1,reduced=True)
 
             #compare_inputs(14,epsilon,minimum=0,maximum=0.5,reduced=False)
             compare_inputs(14,epsilon,minimum=-1,maximum=1,reduced=True)
