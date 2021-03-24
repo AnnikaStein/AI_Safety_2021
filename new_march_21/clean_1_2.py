@@ -27,7 +27,8 @@ endindex = args.endfile
 list_paths = []
 with open('/home/um106329/aisafety/new_march_21/qcd_file_paths.json') as json_file:
     json_paths = json.load(json_file)
-    
+    '''
+    # QCD files
     for entry in json_paths['QCD_HT300to500_TuneCP5_13TeV-madgraph-pythia8']:
         list_paths.append(entry)
     for entry in json_paths['QCD_HT500to700_TuneCP5_13TeV-madgraph-pythia8']:
@@ -40,8 +41,10 @@ with open('/home/um106329/aisafety/new_march_21/qcd_file_paths.json') as json_fi
         list_paths.append(entry)
     for entry in json_paths['QCD_HT2000toInf_TuneCP5_13TeV-madgraph-pythia8']:
         list_paths.append(entry)
-        
-
+    '''  
+    # TTtoSemileptonic files
+    for entry in json_paths['TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8']:
+        list_paths.append(entry)
 
 ### Perform cleaning and save files ###
 
@@ -149,8 +152,12 @@ for innerstart in np.arange(startindex, endindex, 50):
                 #print('if else')
                 datasetNEW, DeepCSV_datasetNEW = cleandataset(uproot.open(list_paths[n]))
                 dataset, DeepCSV_dataset = np.concatenate((dataset, datasetNEW)), np.concatenate((DeepCSV_dataset, DeepCSV_datasetNEW))
+        '''
         np.save(f'/hpcwork/um106329/new_march_21/cleaned/inputs_{innerstart}_to_{innerstart+49}.npy', dataset)  
         np.save(f'/hpcwork/um106329/new_march_21/cleaned/deepcsv_{innerstart}_to_{innerstart+49}.npy', DeepCSV_dataset)  
+        '''
+        np.save(f'/hpcwork/um106329/new_march_21/cleanedTTtoSemilep/inputs_{innerstart}_to_{innerstart+49}.npy', dataset)  
+        np.save(f'/hpcwork/um106329/new_march_21/cleanedTTtoSemilep/deepcsv_{innerstart}_to_{innerstart+49}.npy', DeepCSV_dataset) 
     else:
         for i,n in enumerate(range(innerstart, endindex)):
             #print(n)
@@ -161,9 +168,12 @@ for innerstart in np.arange(startindex, endindex, 50):
                 #print('ELSE ELSE')
                 datasetNEW, DeepCSV_datasetNEW = cleandataset(uproot.open(list_paths[n]))
                 dataset, DeepCSV_dataset = np.concatenate((dataset, datasetNEW)), np.concatenate((DeepCSV_dataset, DeepCSV_datasetNEW))
+        '''
         np.save(f'/hpcwork/um106329/new_march_21/cleaned/inputs_{innerstart}_to_{endindex}.npy', dataset)  
         np.save(f'/hpcwork/um106329/new_march_21/cleaned/deepcsv_{innerstart}_to_{endindex}.npy', DeepCSV_dataset)  
-
+        '''
+        np.save(f'/hpcwork/um106329/new_march_21/cleanedTTtoSemilep/inputs_{innerstart}_to_{endindex}.npy', dataset)  
+        np.save(f'/hpcwork/um106329/new_march_21/cleanedTTtoSemilep/deepcsv_{innerstart}_to_{endindex}.npy', DeepCSV_dataset)  
     gc.collect()
     
 
