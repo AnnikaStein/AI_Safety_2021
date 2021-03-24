@@ -8,7 +8,7 @@
 
 #SBATCH --cpus-per-task=2
 
-#SBATCH --job-name=PREP
+#SBATCH --job-name=PREPtt
 
 #SBATCH --output=output.%J.txt
 
