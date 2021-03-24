@@ -9,19 +9,34 @@ from sklearn.preprocessing import StandardScaler
 import gc
 
 
-
+'''
 # this will have all starts from 0 to (including) 11400
 starts = np.arange(0,11450,50)
 # this will have all ends from 49 to 11399 as well as 11407 (this was the number of original .root-files)
 ends = np.concatenate((np.arange(49,11449,50), np.arange(11407,11408)))             
+'''
+
+
+# this will have all starts from 0 to (including) 11400
+starts = np.arange(0,2450,50)
+# this will have all ends from 49 to 11399 as well as 11407 (this was the number of original .root-files)
+ends = np.concatenate((np.arange(49,2449,50), np.arange(2446,2447)))             
+
+
 
 #print(starts)
 #print(ends)
 NUM_DATASETS = len(starts)
 print(NUM_DATASETS)
-
+'''
+#  QCD
 dataset_paths = [f'/hpcwork/um106329/new_march_21/cleaned/inputs_{starts[k]}_to_{ends[k]}.npy' for k in range(0, NUM_DATASETS)]
 DeepCSV_paths = [f'/hpcwork/um106329/new_march_21/cleaned/deepcsv_{starts[k]}_to_{ends[k]}.npy' for k in range(0, NUM_DATASETS)]
+'''
+
+# TT to Semileptonic
+dataset_paths = [f'/hpcwork/um106329/new_march_21/cleanedTTtoSemilep/inputs_{starts[k]}_to_{ends[k]}.npy' for k in range(0, NUM_DATASETS)]
+DeepCSV_paths = [f'/hpcwork/um106329/new_march_21/cleanedTTtoSemilep/deepcsv_{starts[k]}_to_{ends[k]}.npy' for k in range(0, NUM_DATASETS)]
 
 
 
@@ -57,7 +72,8 @@ def preprocess(dataset, DeepCSV_dataset, s):
     val_inputs = norm_val_inputs.clone().detach().to(torch.float16)
     test_inputs = norm_test_inputs.clone().detach().to(torch.float16)
     
-        
+    '''    
+    # QCD
     torch.save(train_inputs, '/hpcwork/um106329/new_march_21/scaled/train_inputs_%d.pt' % s)
     torch.save(val_inputs, '/hpcwork/um106329/new_march_21/scaled/val_inputs_%d.pt' % s)
     torch.save(test_inputs, '/hpcwork/um106329/new_march_21/scaled/test_inputs_%d.pt' % s)
@@ -66,6 +82,18 @@ def preprocess(dataset, DeepCSV_dataset, s):
     torch.save(val_targets, '/hpcwork/um106329/new_march_21/scaled/val_targets_%d.pt' % s)
     torch.save(test_targets, '/hpcwork/um106329/new_march_21/scaled/test_targets_%d.pt' % s)
     torch.save(scalers, '/hpcwork/um106329/new_march_21/scaled/scalers_%d.pt' % s)
+    '''
+    
+    # TT to Semileptonic
+    torch.save(train_inputs, '/work/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % s)
+    torch.save(val_inputs, '/work/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % s)
+    torch.save(test_inputs, '/work/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % s)
+    torch.save(DeepCSV_testset, '/work/um106329/new_march_21/scaledTTtoSemilep/DeepCSV_testset_%d.pt' % s)
+    torch.save(train_targets, '/work/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % s)
+    torch.save(val_targets, '/work/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % s)
+    torch.save(test_targets, '/work/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % s)
+    torch.save(scalers, '/work/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % s)
+    
     
     del train_inputs
     del val_inputs
@@ -83,6 +111,6 @@ def preprocess(dataset, DeepCSV_dataset, s):
     gc.collect()    
     
     
-for s in range(1,121):
+for s in range(1,49):
     preprocess(np.load(dataset_paths[s]), np.load(DeepCSV_paths[s]), s)
 
