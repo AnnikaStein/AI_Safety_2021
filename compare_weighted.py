@@ -42,7 +42,7 @@ epsilon = 0.01
 
 at_epoch = 120
 
-NUM_DATASETS = 200
+NUM_DATASETS = 200  # this is only for the trained model (that used 200 files), if evaluation uses a different number, specify this below before loading the inputs
 #NUM_DATASETS = 49  # TTtoSemilep clean (for QCD clean: 229)
 '''
 eps = str(epsilon).replace('.','')
@@ -207,7 +207,18 @@ val_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_targets_%d.
 train_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
 train_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 '''
-NUM_DATASETS = 2
+NUM_DATASETS = 10
+# QCD clean
+scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaled/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+DeepCSV_testset_file_paths = ['/hpcwork/um106329/new_march_21/scaled/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
+val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+'''
 # TT to Semilep clean
 scalers_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
@@ -218,7 +229,7 @@ val_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/val_input
 val_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 train_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
 train_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-
+'''
 
 input_names = ['Jet_eta',
  'Jet_pt',
@@ -327,13 +338,15 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                 xadv = scalers[variable].inverse_transform(all_inputs_noise[:][:,variable].cpu())
                 integervars = [59,63,64,65,66]
                 if variable in integervars:
-                    xadv = scalers[variable].inverse_transform(all_inputs[:][:,variable].cpu())
+                    xadv = np.rint(scalers[variable].inverse_transform(all_inputs[:][:,variable].cpu()))
                     
                 if variable in [41, 48, 49, 56]:
                     defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
                     if np.sum(defaults) != 0:
-                        xadv[defaults] = all_inputs[:,variable][defaults]
-                        
+                        xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
+                
+                '''
+                # as long as nothing was set to 0 manually, not really necessary
                 vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
                 vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
                 vars_with_0_defaults.extend([18, 19, 20, 21])               # trackEtaRel_0 to _3
@@ -344,7 +357,7 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                     defaults = abs(scalers[i].inverse_transform(all_inputs[:,variable].cpu())) < 0.001   # "floating point error" --> allow some error margin
                     if np.sum(defaults) != 0:
                         xadv[defaults] = all_inputs[:,variable][defaults]
-                        
+                '''        
                 
                 '''
                     # For cleaned files (QCD or TT to Semileptonic)
@@ -352,7 +365,7 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                 if variable in range(67):
                     defaults = abs(scalers[i].inverse_transform(all_inputs[:,i].cpu()) + 999) < 300   # "floating point error" --> allow some error margin
                     if np.sum(defaults) != 0:
-                        xadv[defaults] = all_inputs[:,i][defaults]
+                        xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
                         
                 xadv_new = np.concatenate((xmagn[i], xadv))
                 xmagn[i] = xadv_new
@@ -360,13 +373,15 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                 xadv = scalers[variable].inverse_transform(all_inputs_noise[:][:,variable].cpu())
                 integervars = [59,63,64,65,66]
                 if variable in integervars:
-                    xadv = scalers[variable].inverse_transform(all_inputs[:][:,variable].cpu())
+                    xadv = np.rint(scalers[variable].inverse_transform(all_inputs[:][:,variable].cpu()))
                 if variable in [41, 48, 49, 56]:
                     defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
                     if np.sum(defaults) != 0:
-                        if variable in [41, 48, 49, 56]:
-                            xadv = all_inputs[:,variable][defaults]
-                        break
+                        xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
+                        
+                
+                '''
+                # as long as nothing was set to 0 manually, not really necessary
                 vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
                 vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
                 vars_with_0_defaults.extend([18, 19, 20, 21])               # trackEtaRel_0 to _3
@@ -377,7 +392,7 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                     defaults = abs(scalers[i].inverse_transform(all_inputs[:,variable].cpu())) < 0.001   # "floating point error" --> allow some error margin
                     if np.sum(defaults) != 0:
                         xadv[defaults] = all_inputs[:,variable][defaults]
-                        
+                '''        
                 
                 '''
                     # For cleaned files (QCD or TT to Semileptonic)
@@ -385,7 +400,7 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                 if variable in range(67):
                     defaults = abs(scalers[i].inverse_transform(all_inputs[:,i].cpu()) + 999) < 300   # "floating point error" --> allow some error margin
                     if np.sum(defaults) != 0:
-                        xadv[defaults] = all_inputs[:,i][defaults]
+                        xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
                         
                 xmagn.append(xadv)
         del test_inputs
@@ -441,10 +456,12 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
     name_var = input_names[variable]
     if fixRange == 'no':
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
     else:
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -540,9 +557,15 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         for i, m in enumerate(epsilon):
             if s > 0:
                 xadv = np.concatenate((xmagn[i], scalers[prop].inverse_transform(fgsm_attack(epsilon[i],all_inputs,all_targets,reduced=reduced, scalers=scalers, model=method)[:,prop].cpu())))
+                integervars = [59,63,64,65,66]
+                if prop in integervars:
+                    xadv = np.rint(xadv)
                 xmagn[i] = xadv
             else:
                 xadv = scalers[prop].inverse_transform(fgsm_attack(epsilon[i],all_inputs,all_targets,reduced=reduced, scalers=scalers)[:,prop].cpu())
+                integervars = [59,63,64,65,66]
+                if prop in integervars:
+                    xadv = np.rint(xadv)
                 xmagn.append(xadv)
         
         del scalers
@@ -613,10 +636,12 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
     name_var = input_names[prop]
     if fixRange == 'no':
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
     else:
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -686,77 +711,77 @@ else:
 
             # Jet pt
             #apply_noise(variable=1,magn=magn,minimum=None,maximum=1000)
-            apply_noise(variable=1,magn=magn,minimum=None,maximum=1000)
+            apply_noise(variable=1,magn=magn,minimum=None,maximum=250)
 
             # flightDist2DSig
             #apply_noise(variable=2,magn=magn,minimum=None,maximum=80)
-            apply_noise(variable=2,magn=magn,minimum=-10,maximum=80)
+            apply_noise(variable=2,magn=magn,minimum=-0.1,maximum=100)
 
             # flightDist2DVal
             #apply_noise(variable=3,magn=magn,minimum=None,maximum=None)
-            apply_noise(variable=3,magn=magn,minimum=None,maximum=None)
+            apply_noise(variable=3,magn=magn,minimum=-0.1,maximum=2.6)
 
             # flightDist3DSig
             #apply_noise(variable=4,magn=magn,minimum=None,maximum=80)
-            apply_noise(variable=4,magn=magn,minimum=None,maximum=80)
+            apply_noise(variable=4,magn=magn,minimum=-0.1,maximum=100)
 
             # flightDist3DVal
             #apply_noise(variable=5,magn=magn,minimum=None,maximum=3.5)
-            apply_noise(variable=5,magn=magn,minimum=None,maximum=3.5)
+            apply_noise(variable=5,magn=magn,minimum=-0.1,maximum=5)
 
 
             # trackDecayLenVal
             #apply_noise(variable=6,magn=magn,minimum=-0.1,maximum=5)
-            apply_noise(variable=6,magn=magn,minimum=-0.1,maximum=5)
+            apply_noise(variable=6,magn=magn,minimum=-0.1,maximum=1)
 
             #apply_noise(variable=7,magn=magn,minimum=-0.1,maximum=5)
-            apply_noise(variable=7,magn=magn,minimum=-0.1,maximum=5)
+            apply_noise(variable=7,magn=magn,minimum=-0.1,maximum=1)
 
             #apply_noise(variable=8,magn=magn,minimum=-0.1,maximum=5)
-            apply_noise(variable=8,magn=magn,minimum=-0.1,maximum=5)
+            apply_noise(variable=8,magn=magn,minimum=-0.1,maximum=1)
 
             #apply_noise(variable=9,magn=magn,minimum=-0.1,maximum=5)
-            apply_noise(variable=9,magn=magn,minimum=-0.1,maximum=5)
+            apply_noise(variable=9,magn=magn,minimum=-0.1,maximum=1)
 
             #apply_noise(variable=10,magn=magn,minimum=-0.1,maximum=5)
-            apply_noise(variable=10,magn=magn,minimum=-0.1,maximum=5)
+            apply_noise(variable=10,magn=magn,minimum=-0.1,maximum=1)
 
             #apply_noise(variable=11,magn=magn,minimum=-0.1,maximum=5)
-            apply_noise(variable=11,magn=magn,minimum=-0.1,maximum=5)
+            apply_noise(variable=11,magn=magn,minimum=-0.1,maximum=1)
 
         elif fromVar == 12:
             # trackDeltaR
-            #apply_noise(variable=12,magn=magn,minimum=0,maximum=0.301)
-            #apply_noise(variable=12,magn=magn,minimum=-1,maximum=1)
+            #apply_noise(variable=12,magn=magn,minimum=-0.01,maximum=0.31)
+            apply_noise(variable=12,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=13,magn=magn,minimum=0,maximum=0.301)
-            #apply_noise(variable=13,magn=magn,minimum=-1,maximum=1)
+            apply_noise(variable=13,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=14,magn=magn,minimum=0,maximum=0.5)
-            apply_noise(variable=14,magn=magn,minimum=-1,maximum=1)
+            apply_noise(variable=14,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=15,magn=magn,minimum=0,maximum=0.5)
-            apply_noise(variable=15,magn=magn,minimum=-1,maximum=1)
+            apply_noise(variable=15,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=16,magn=magn,minimum=0,maximum=0.5)
-            apply_noise(variable=16,magn=magn,minimum=-1,maximum=1)
+            apply_noise(variable=16,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=17,magn=magn,minimum=0,maximum=0.5)
-            apply_noise(variable=17,magn=magn,minimum=-1,maximum=1)
+            apply_noise(variable=17,magn=magn,minimum=-0.001,maximum=0.301)
 
 
             # trackEtaRel
             #apply_noise(variable=18,magn=magn,minimum=0,maximum=9)
-            apply_noise(variable=18,magn=magn,minimum=0,maximum=9)
+            apply_noise(variable=18,magn=magn,minimum=-0.1,maximum=9)
 
             #apply_noise(variable=19,magn=magn,minimum=0,maximum=9)
-            apply_noise(variable=19,magn=magn,minimum=0,maximum=9)
+            apply_noise(variable=19,magn=magn,minimum=-0.1,maximum=9)
 
             #apply_noise(variable=20,magn=magn,minimum=0,maximum=9)
-            apply_noise(variable=20,magn=magn,minimum=0,maximum=9)
+            apply_noise(variable=20,magn=magn,minimum=-0.1,maximum=9)
 
             #apply_noise(variable=21,magn=magn,minimum=0,maximum=9)
-            apply_noise(variable=21,magn=magn,minimum=0,maximum=9)
+            apply_noise(variable=21,magn=magn,minimum=-0.1,maximum=9)
 
         elif fromVar == 22:
             # trackJetDistVal
@@ -767,165 +792,165 @@ else:
             apply_noise(variable=23,magn=magn,minimum=-0.08,maximum=0.0025)
 
             #apply_noise(variable=24,magn=magn,minimum=-0.1,maximum=0.01)
-            apply_noise(variable=24,magn=magn,minimum=-0.1,maximum=0.01)
+            apply_noise(variable=24,magn=magn,minimum=-0.08,maximum=0.0025)
 
             #apply_noise(variable=25,magn=magn,minimum=-0.1,maximum=0.01)
-            apply_noise(variable=25,magn=magn,minimum=-0.1,maximum=0.01)
+            apply_noise(variable=25,magn=magn,minimum=-0.08,maximum=0.0025)
 
             #apply_noise(variable=26,magn=magn,minimum=-0.1,maximum=0.01)
-            apply_noise(variable=26,magn=magn,minimum=-0.1,maximum=0.01)
+            apply_noise(variable=26,magn=magn,minimum=-0.08,maximum=0.0025)
 
             #apply_noise(variable=27,magn=magn,minimum=-0.1,maximum=0.01)
-            apply_noise(variable=27,magn=magn,minimum=-0.1,maximum=0.01)
+            apply_noise(variable=27,magn=magn,minimum=-0.08,maximum=0.0025)
 
 
             # trackJetPt
             #apply_noise(variable=28,magn=magn,minimum=None,maximum=575)
-            apply_noise(variable=28,magn=magn,minimum=None,maximum=575)
+            apply_noise(variable=28,magn=magn,minimum=None,maximum=None)
 
 
             # trackPtRatio
             #apply_noise(variable=29,magn=magn,minimum=0,maximum=0.301)
-            apply_noise(variable=29,magn=magn,minimum=0,maximum=0.301)
+            apply_noise(variable=29,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=30,magn=magn,minimum=0,maximum=0.301)
-            apply_noise(variable=30,magn=magn,minimum=0,maximum=0.301)
+            apply_noise(variable=30,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=31,magn=magn,minimum=-0.05,maximum=0.4)
-            apply_noise(variable=31,magn=magn,minimum=-0.05,maximum=0.4)
+            apply_noise(variable=31,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=30,magn=magn,minimum=-0.05,maximum=0.4)
-            apply_noise(variable=32,magn=magn,minimum=-0.05,maximum=0.4)
+            apply_noise(variable=32,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=33,magn=magn,minimum=-0.05,maximum=0.4)
-            apply_noise(variable=33,magn=magn,minimum=-0.05,maximum=0.4)
+            apply_noise(variable=33,magn=magn,minimum=-0.001,maximum=0.301)
 
             #apply_noise(variable=34,magn=magn,minimum=-0.05,maximum=0.4)
-            apply_noise(variable=34,magn=magn,minimum=-0.05,maximum=0.4)
+            apply_noise(variable=34,magn=magn,minimum=-0.001,maximum=0.301)
 
         elif fromVar == 35:
             # trackPtRel
             #apply_noise(variable=35,magn=magn,minimum=-0.1,maximum=6)
-            apply_noise(variable=35,magn=magn,minimum=-0.1,maximum=6)
+            apply_noise(variable=35,magn=magn,minimum=-0.1,maximum=3.1)
 
             #apply_noise(variable=36,magn=magn,minimum=-0.1,maximum=6)
-            apply_noise(variable=36,magn=magn,minimum=-0.1,maximum=6)
+            apply_noise(variable=36,magn=magn,minimum=-0.1,maximum=3.1)
 
             #apply_noise(variable=37,magn=magn,minimum=-0.1,maximum=6)
-            apply_noise(variable=37,magn=magn,minimum=-0.1,maximum=6)
+            apply_noise(variable=37,magn=magn,minimum=-0.1,maximum=3.1)
 
             #apply_noise(variable=38,magn=magn,minimum=-0.1,maximum=6)
-            apply_noise(variable=38,magn=magn,minimum=-0.1,maximum=6)
+            apply_noise(variable=38,magn=magn,minimum=-0.1,maximum=3.1)
 
             #apply_noise(variable=39,magn=magn,minimum=-0.1,maximum=6)
-            apply_noise(variable=39,magn=magn,minimum=-0.1,maximum=6)
+            apply_noise(variable=39,magn=magn,minimum=-0.1,maximum=3.1)
 
             #apply_noise(variable=40,magn=magn,minimum=-0.1,maximum=6)
-            apply_noise(variable=40,magn=magn,minimum=-0.1,maximum=6)
+            apply_noise(variable=40,magn=magn,minimum=-0.1,maximum=3.1)
 
 
             # trackSip2d (SigAboveCharm, Sig, ValAbove Charm)
             #apply_noise(variable=41,magn=magn,minimum=-5,maximum=20)
-            apply_noise(variable=41,magn=magn,minimum=-5,maximum=20)
+            apply_noise(variable=41,magn=magn,minimum=-5,maximum=5)
 
             #apply_noise(variable=42,magn=magn,minimum=-5,maximum=20)
-            apply_noise(variable=42,magn=magn,minimum=-5,maximum=20)
+            apply_noise(variable=42,magn=magn,minimum=-4.5,maximum=16)
 
             #apply_noise(variable=43,magn=magn,minimum=-5,maximum=20)
-            apply_noise(variable=43,magn=magn,minimum=-5,maximum=20)
+            apply_noise(variable=43,magn=magn,minimum=-5,maximum=13)
             #
             #apply_noise(variable=44,magn=magn,minimum=-20,maximum=20)
-            apply_noise(variable=44,magn=magn,minimum=-20,maximum=20)
+            apply_noise(variable=44,magn=magn,minimum=-5.5,maximum=10)
 
             #apply_noise(variable=45,magn=magn,minimum=-20,maximum=20)
-            apply_noise(variable=45,magn=magn,minimum=-20,maximum=20)
+            apply_noise(variable=45,magn=magn,minimum=-6,maximum=7)
 
             #apply_noise(variable=46,magn=magn,minimum=-20,maximum=20)
-            apply_noise(variable=46,magn=magn,minimum=-20,maximum=20)
+            apply_noise(variable=46,magn=magn,minimum=-6.5,maximum=4.5)
 
             #apply_noise(variable=47,magn=magn,minimum=-20,maximum=20)
-            apply_noise(variable=47,magn=magn,minimum=-20,maximum=20)
+            apply_noise(variable=47,magn=magn,minimum=-7,maximum=2)
 
             #apply_noise(variable=48,magn=magn,minimum=-2.1,maximum=0.1)
-            apply_noise(variable=48,magn=magn,minimum=-1,maximum=0.1)
+            apply_noise(variable=48,magn=magn,minimum=-1.05,maximum=None)
 
         elif fromVar == 49:
             # trackSip3d (SigAboveCharm, Sig, ValAbove Charm)
             #apply_noise(variable=49,magn=magn,minimum=-5,maximum=20)
-            apply_noise(variable=49,magn=magn,minimum=-5,maximum=20)
+            apply_noise(variable=49,magn=magn,minimum=-5,maximum=5)
 
             #apply_noise(variable=50,magn=magn,minimum=-10,maximum=40)
-            apply_noise(variable=50,magn=magn,minimum=-10,maximum=40)
+            apply_noise(variable=50,magn=magn,minimum=-25,maximum=50)
 
             #apply_noise(variable=51,magn=magn,minimum=-10,maximum=40)
-            apply_noise(variable=51,magn=magn,minimum=-10,maximum=40)
+            apply_noise(variable=51,magn=magn,minimum=-25,maximum=50)
 
             #apply_noise(variable=52,magn=magn,minimum=-25,maximum=75)
-            apply_noise(variable=52,magn=magn,minimum=-25,maximum=75)
+            apply_noise(variable=52,magn=magn,minimum=-25,maximum=50)
 
             #apply_noise(variable=53,magn=magn,minimum=-25,maximum=75)
-            apply_noise(variable=53,magn=magn,minimum=-25,maximum=75)
+            apply_noise(variable=53,magn=magn,minimum=-25,maximum=50)
 
             #apply_noise(variable=54,magn=magn,minimum=-25,maximum=75)
-            apply_noise(variable=54,magn=magn,minimum=-25,maximum=75)
+            apply_noise(variable=54,magn=magn,minimum=-25,maximum=50)
 
             #apply_noise(variable=55,magn=magn,minimum=-25,maximum=75)
-            apply_noise(variable=55,magn=magn,minimum=-25,maximum=75)
+            apply_noise(variable=55,magn=magn,minimum=-25,maximum=50)
 
             #apply_noise(variable=56,magn=magn,minimum=-2.1,maximum=0.1)
-            apply_noise(variable=56,magn=magn,minimum=-1.1,maximum=0.1)
+            apply_noise(variable=56,magn=magn,minimum=-1.05,maximum=0.5)
 
 
             # trackSumJetDeltaR
             #apply_noise(variable=57,magn=magn,minimum=None,maximum=0.3)
-            apply_noise(variable=57,magn=magn,minimum=None,maximum=0.3)
+            apply_noise(variable=57,magn=magn,minimum=-0.001,maximum=0.301)
 
 
             # trackSumJetEtRatio
             #apply_noise(variable=58,magn=magn,minimum=None,maximum=2.1)
-            apply_noise(variable=58,magn=magn,minimum=None,maximum=2.1)
+            apply_noise(variable=58,magn=magn,minimum=None,maximum=1.4)
 
         elif fromVar == 59:
             # vertexCat
             #apply_noise(variable=59,magn=magn,minimum=-0.1,maximum=2.1)
-            apply_noise(variable=59,magn=magn,minimum=-0.1,maximum=2.1)
+            apply_noise(variable=59,magn=magn,minimum=-0.6,maximum=2.6)
 
 
             # vertexEnergyRatio
             #apply_noise(variable=60,magn=magn,minimum=None,maximum=2.2)
-            apply_noise(variable=60,magn=magn,minimum=None,maximum=2.2)
+            apply_noise(variable=60,magn=magn,minimum=0,maximum=2.5)
 
 
             # vertexJetDeltaR
             # ok
             #apply_noise(variable=61,magn=magn,minimum=None,maximum=None)
-            apply_noise(variable=61,magn=magn,minimum=None,maximum=None)
+            apply_noise(variable=61,magn=magn,minimum=-0.001,maximum=0.301)
 
 
             # vertexMass
             #apply_noise(variable=62,magn=magn,minimum=None,maximum=75)
-            apply_noise(variable=62,magn=magn,minimum=None,maximum=75)
+            apply_noise(variable=62,magn=magn,minimum=0,maximum=20)
 
 
             # jetNSecondaryVertices
             # ok
             #apply_noise(variable=63,magn=magn,minimum=None,maximum=None)
-            apply_noise(variable=63,magn=magn,minimum=None,maximum=None)
+            apply_noise(variable=63,magn=magn,minimum=-0.5,maximum=None)
 
 
             # jetNSelectedTracks
             #apply_noise(variable=64,magn=magn,minimum=None,maximum=None)
-            apply_noise(variable=64,magn=magn,minimum=None,maximum=None)
+            apply_noise(variable=64,magn=magn,minimum=-0.5,maximum=None)
 
 
             # jetNTracksEtaRel
             #apply_noise(variable=65,magn=magn,minimum=None,maximum=None)
-            apply_noise(variable=65,magn=magn,minimum=None,maximum=None)
+            apply_noise(variable=65,magn=magn,minimum=-0.5,maximum=None)
 
 
             # vertexNTracks
             #apply_noise(variable=66,magn=magn,minimum=None,maximum=None)
-            apply_noise(variable=66,magn=magn,minimum=None,maximum=None)
+            apply_noise(variable=66,magn=magn,minimum=-0.5,maximum=None)
     else:
         #epsilon = [0,0.005,0.01]
         epsilon = [0,0.05,0.1]
@@ -937,244 +962,244 @@ else:
 
             # Jet pt
             #compare_inputs(1,epsilon,minimum=None,maximum=1000,reduced=False)
-            compare_inputs(1,epsilon,minimum=None,maximum=1000,reduced=True)
+            compare_inputs(1,epsilon,minimum=None,maximum=250,reduced=True)
 
             # flightDist2DSig
             #compare_inputs(2,epsilon,minimum=None,maximum=80,reduced=False)
-            compare_inputs(2,epsilon,minimum=-10,maximum=80,reduced=True)
+            compare_inputs(2,epsilon,minimum=-0.1,maximum=100,reduced=True)
 
             # flightDist2DVal
             #compare_inputs(3,epsilon,minimum=None,maximum=None,reduced=False)
-            compare_inputs(3,epsilon,minimum=None,maximum=None,reduced=True)
+            compare_inputs(3,epsilon,minimum=-0.1,maximum=2.6,reduced=True)
 
             # flightDist3DSig
             #compare_inputs(4,epsilon,minimum=None,maximum=80,reduced=False)
-            compare_inputs(4,epsilon,minimum=None,maximum=80,reduced=True)
+            compare_inputs(4,epsilon,minimum=-0.1,maximum=100,reduced=True)
 
             # flightDist3DVal
             #compare_inputs(5,epsilon,minimum=None,maximum=3.5,reduced=False)
-            compare_inputs(5,epsilon,minimum=None,maximum=3.5,reduced=True)
+            compare_inputs(5,epsilon,minimum=-0.1,maximum=5,reduced=True)
 
 
             # trackDecayLenVal
             #compare_inputs(6,epsilon,minimum=-0.1,maximum=5,reduced=False)
-            compare_inputs(6,epsilon,minimum=-0.1,maximum=5,reduced=True)
+            compare_inputs(6,epsilon,minimum=-0.1,maximum=1,reduced=True)
 
             #compare_inputs(7,epsilon,minimum=-0.1,maximum=5,reduced=False)
-            compare_inputs(7,epsilon,minimum=-0.1,maximum=5,reduced=True)
+            compare_inputs(7,epsilon,minimum=-0.1,maximum=1,reduced=True)
 
             #compare_inputs(8,epsilon,minimum=-0.1,maximum=5,reduced=False)
-            compare_inputs(8,epsilon,minimum=-0.1,maximum=5,reduced=True)
+            compare_inputs(8,epsilon,minimum=-0.1,maximum=1,reduced=True)
 
             #compare_inputs(9,epsilon,minimum=-0.1,maximum=5,reduced=False)
-            compare_inputs(9,epsilon,minimum=-0.1,maximum=5,reduced=True)
+            compare_inputs(9,epsilon,minimum=-0.1,maximum=1,reduced=True)
 
             #compare_inputs(10,epsilon,minimum=-0.1,maximum=5,reduced=False)
-            compare_inputs(10,epsilon,minimum=-0.1,maximum=5,reduced=True)
+            compare_inputs(10,epsilon,minimum=-0.1,maximum=1,reduced=True)
 
             #compare_inputs(11,epsilon,minimum=-0.1,maximum=5,reduced=False)
-            compare_inputs(11,epsilon,minimum=-0.1,maximum=5,reduced=True)
+            compare_inputs(11,epsilon,minimum=-0.1,maximum=1,reduced=True)
 
         elif fromVar == 12:
             # trackDeltaR
             #compare_inputs(12,epsilon,minimum=0,maximum=0.301,reduced=False)
-            #compare_inputs(12,epsilon,minimum=-1,maximum=1,reduced=True)
+            compare_inputs(12,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(13,epsilon,minimum=0,maximum=0.301,reduced=False)
-            #compare_inputs(13,epsilon,minimum=-1,maximum=1,reduced=True)
+            compare_inputs(13,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(14,epsilon,minimum=0,maximum=0.5,reduced=False)
-            compare_inputs(14,epsilon,minimum=-1,maximum=1,reduced=True)
+            compare_inputs(14,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(15,epsilon,minimum=0,maximum=0.5,reduced=False)
-            compare_inputs(15,epsilon,minimum=-1,maximum=1,reduced=True)
+            compare_inputs(15,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(16,epsilon,minimum=0,maximum=0.5,reduced=False)
-            compare_inputs(16,epsilon,minimum=-1,maximum=1,reduced=True)
+            compare_inputs(16,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(17,epsilon,minimum=0,maximum=0.5,reduced=False)
-            compare_inputs(17,epsilon,minimum=-1,maximum=1,reduced=True)
+            compare_inputs(17,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
 
             # trackEtaRel
             #compare_inputs(18,epsilon,minimum=0,maximum=9,reduced=False)
-            compare_inputs(18,epsilon,minimum=0,maximum=9,reduced=True)
+            compare_inputs(18,epsilon,minimum=-0.1,maximum=9,reduced=True)
 
             #compare_inputs(19,epsilon,minimum=0,maximum=9,reduced=False)
-            compare_inputs(19,epsilon,minimum=0,maximum=9,reduced=True)
+            compare_inputs(19,epsilon,minimum=-0.1,maximum=9,reduced=True)
 
             #compare_inputs(20,epsilon,minimum=0,maximum=9,reduced=False)
-            compare_inputs(20,epsilon,minimum=0,maximum=9,reduced=True)
+            compare_inputs(20,epsilon,minimum=-0.1,maximum=9,reduced=True)
 
             #compare_inputs(21,epsilon,minimum=0,maximum=9,reduced=False)
-            compare_inputs(21,epsilon,minimum=0,maximum=9,reduced=True)
+            compare_inputs(21,epsilon,minimum=-0.1,maximum=9,reduced=True)
 
         elif fromVar == 22:
             # trackJetDistVal
             #compare_inputs(22,epsilon,minimum=-0.08,maximum=0.0025,reduced=False)
-            compare_inputs(22,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
+            #compare_inputs(22,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
 
             #compare_inputs(23,epsilon,minimum=-0.08,maximum=0.0025,reduced=False)
-            compare_inputs(23,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
+            #compare_inputs(23,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
 
             #compare_inputs(24,epsilon,minimum=-0.1,maximum=0.01,reduced=False)
-            compare_inputs(24,epsilon,minimum=-0.1,maximum=0.01,reduced=True)
+            #compare_inputs(24,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
 
             #compare_inputs(25,epsilon,minimum=-0.1,maximum=0.01,reduced=False)
-            compare_inputs(25,epsilon,minimum=-0.1,maximum=0.01,reduced=True)
+            #compare_inputs(25,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
 
             #compare_inputs(26,epsilon,minimum=-0.1,maximum=0.01,reduced=False)
-            compare_inputs(26,epsilon,minimum=-0.1,maximum=0.01,reduced=True)
+            #compare_inputs(26,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
 
             #compare_inputs(27,epsilon,minimum=-0.1,maximum=0.01,reduced=False)
-            compare_inputs(27,epsilon,minimum=-0.1,maximum=0.01,reduced=True)
+            #compare_inputs(27,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
 
 
             # trackJetPt
             #compare_inputs(28,epsilon,minimum=None,maximum=575,reduced=False)
-            compare_inputs(28,epsilon,minimum=None,maximum=575,reduced=True)
+            #compare_inputs(28,epsilon,minimum=None,maximum=None,reduced=True)
 
 
             # trackPtRatio
             #compare_inputs(29,epsilon,minimum=0,maximum=0.301,reduced=False)
-            compare_inputs(29,epsilon,minimum=0,maximum=0.301,reduced=True)
+            #compare_inputs(29,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(30,epsilon,minimum=0,maximum=0.301,reduced=False)
-            compare_inputs(30,epsilon,minimum=0,maximum=0.301,reduced=True)
+            #compare_inputs(30,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(31,epsilon,minimum=-0.05,maximum=0.4,reduced=False)
-            compare_inputs(31,epsilon,minimum=-0.05,maximum=0.4,reduced=True)
+            #compare_inputs(31,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(30,epsilon,minimum=-0.05,maximum=0.4,reduced=False)
-            compare_inputs(32,epsilon,minimum=-0.05,maximum=0.4,reduced=True)
+            #compare_inputs(32,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(33,epsilon,minimum=-0.05,maximum=0.4,reduced=False)
-            compare_inputs(33,epsilon,minimum=-0.05,maximum=0.4,reduced=True)
+            compare_inputs(33,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
             #compare_inputs(34,epsilon,minimum=-0.05,maximum=0.4,reduced=False)
-            compare_inputs(34,epsilon,minimum=-0.05,maximum=0.4,reduced=True)
+            compare_inputs(34,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
         elif fromVar == 35:
             # trackPtRel
             #compare_inputs(35,epsilon,minimum=-0.1,maximum=6,reduced=False)
-            compare_inputs(35,epsilon,minimum=-0.1,maximum=6,reduced=True)
+            compare_inputs(35,epsilon,minimum=-0.1,maximum=3.1,reduced=True)
 
             #compare_inputs(36,epsilon,minimum=-0.1,maximum=6,reduced=False)
-            compare_inputs(36,epsilon,minimum=-0.1,maximum=6,reduced=True)
+            compare_inputs(36,epsilon,minimum=-0.1,maximum=3.1,reduced=True)
 
             #compare_inputs(37,epsilon,minimum=-0.1,maximum=6,reduced=False)
-            compare_inputs(37,epsilon,minimum=-0.1,maximum=6,reduced=True)
+            compare_inputs(37,epsilon,minimum=-0.1,maximum=3.1,reduced=True)
 
             #compare_inputs(38,epsilon,minimum=-0.1,maximum=6,reduced=False)
-            compare_inputs(38,epsilon,minimum=-0.1,maximum=6,reduced=True)
+            compare_inputs(38,epsilon,minimum=-0.1,maximum=3.1,reduced=True)
 
             #compare_inputs(39,epsilon,minimum=-0.1,maximum=6,reduced=False)
-            compare_inputs(39,epsilon,minimum=-0.1,maximum=6,reduced=True)
+            compare_inputs(39,epsilon,minimum=-0.1,maximum=3.1,reduced=True)
 
             #compare_inputs(40,epsilon,minimum=-0.1,maximum=6,reduced=False)
-            compare_inputs(40,epsilon,minimum=-0.1,maximum=6,reduced=True)
+            compare_inputs(40,epsilon,minimum=-0.1,maximum=3.1,reduced=True)
 
 
             # trackSip2d (SigAboveCharm, Sig, ValAbove Charm)
             #compare_inputs(41,epsilon,minimum=-5,maximum=20,reduced=False)
-            compare_inputs(41,epsilon,minimum=-5,maximum=20,reduced=True)
+            compare_inputs(41,epsilon,minimum=-5,maximum=5,reduced=True)
 
             #compare_inputs(42,epsilon,minimum=-5,maximum=20,reduced=False)
-            compare_inputs(42,epsilon,minimum=-5,maximum=20,reduced=True)
+            compare_inputs(42,epsilon,minimum=-4.5,maximum=16,reduced=True)
 
             #compare_inputs(43,epsilon,minimum=-5,maximum=20,reduced=False)
-            compare_inputs(43,epsilon,minimum=-5,maximum=20,reduced=True)
+            compare_inputs(43,epsilon,minimum=-5,maximum=13,reduced=True)
             #
             #compare_inputs(44,epsilon,minimum=-20,maximum=20,reduced=False)
-            compare_inputs(44,epsilon,minimum=-20,maximum=20,reduced=True)
+            compare_inputs(44,epsilon,minimum=-5.5,maximum=10,reduced=True)
 
             #compare_inputs(45,epsilon,minimum=-20,maximum=20,reduced=False)
-            compare_inputs(45,epsilon,minimum=-20,maximum=20,reduced=True)
+            compare_inputs(45,epsilon,minimum=-6,maximum=7,reduced=True)
 
             #compare_inputs(46,epsilon,minimum=-20,maximum=20,reduced=False)
-            compare_inputs(46,epsilon,minimum=-20,maximum=20,reduced=True)
+            compare_inputs(46,epsilon,minimum=-6.5,maximum=4.5,reduced=True)
 
             #compare_inputs(47,epsilon,minimum=-20,maximum=20,reduced=False)
-            compare_inputs(47,epsilon,minimum=-20,maximum=20,reduced=True)
+            compare_inputs(47,epsilon,minimum=-7,maximum=2,reduced=True)
 
             #compare_inputs(48,epsilon,minimum=-2.1,maximum=0.1,reduced=False)
-            compare_inputs(48,epsilon,minimum=-1,maximum=0.1,reduced=True)
+            compare_inputs(48,epsilon,minimum=-1.05,maximum=None,reduced=True)
 
         elif fromVar == 49:
             # trackSip3d (SigAboveCharm, Sig, ValAbove Charm)
             #compare_inputs(49,epsilon,minimum=-5,maximum=20,reduced=False)
-            compare_inputs(49,epsilon,minimum=-5,maximum=20,reduced=True)
+            compare_inputs(49,epsilon,minimum=-5,maximum=5,reduced=True)
 
             #compare_inputs(50,epsilon,minimum=-10,maximum=40,reduced=False)
-            compare_inputs(50,epsilon,minimum=-10,maximum=40,reduced=True)
+            compare_inputs(50,epsilon,minimum=-25,maximum=50,reduced=True)
 
             #compare_inputs(51,epsilon,minimum=-10,maximum=40,reduced=False)
-            compare_inputs(51,epsilon,minimum=-10,maximum=40,reduced=True)
+            compare_inputs(51,epsilon,minimum=-25,maximum=50,reduced=True)
 
             #compare_inputs(52,epsilon,minimum=-25,maximum=75,reduced=False)
-            compare_inputs(52,epsilon,minimum=-25,maximum=75,reduced=True)
+            compare_inputs(52,epsilon,minimum=-25,maximum=50,reduced=True)
 
             #compare_inputs(53,epsilon,minimum=-25,maximum=75,reduced=False)
-            compare_inputs(53,epsilon,minimum=-25,maximum=75,reduced=True)
+            compare_inputs(53,epsilon,minimum=-25,maximum=50,reduced=True)
 
             #compare_inputs(54,epsilon,minimum=-25,maximum=75,reduced=False)
-            compare_inputs(54,epsilon,minimum=-25,maximum=75,reduced=True)
+            compare_inputs(54,epsilon,minimum=-25,maximum=50,reduced=True)
 
             #compare_inputs(55,epsilon,minimum=-25,maximum=75,reduced=False)
-            compare_inputs(55,epsilon,minimum=-25,maximum=75,reduced=True)
+            compare_inputs(55,epsilon,minimum=-25,maximum=50,reduced=True)
 
             #compare_inputs(56,epsilon,minimum=-2.1,maximum=0.1,reduced=False)
-            compare_inputs(56,epsilon,minimum=-1.1,maximum=0.1,reduced=True)
+            compare_inputs(56,epsilon,minimum=-1.05,maximum=0.5,reduced=True)
 
 
             # trackSumJetDeltaR
             #compare_inputs(57,epsilon,minimum=None,maximum=0.3,reduced=False)
-            compare_inputs(57,epsilon,minimum=None,maximum=0.3,reduced=True)
+            compare_inputs(57,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
 
             # trackSumJetEtRatio
             #compare_inputs(58,epsilon,minimum=None,maximum=2.1,reduced=False)
-            compare_inputs(58,epsilon,minimum=None,maximum=2.1,reduced=True)
+            compare_inputs(58,epsilon,minimum=None,maximum=1.4,reduced=True)
 
         elif fromVar == 59:
             # vertexCat
             #compare_inputs(59,epsilon,minimum=-0.1,maximum=2.1,reduced=False)
-            compare_inputs(59,epsilon,minimum=-0.1,maximum=2.1,reduced=True)
+            compare_inputs(59,epsilon,minimum=-0.6,maximum=2.6,reduced=True)
 
 
             # vertexEnergyRatio
             #compare_inputs(60,epsilon,minimum=None,maximum=2.2,reduced=False)
-            compare_inputs(60,epsilon,minimum=None,maximum=2.2,reduced=True)
+            #compare_inputs(60,epsilon,minimum=0,maximum=2.5,reduced=True)
 
 
             # vertexJetDeltaR
             # ok
             #compare_inputs(61,epsilon,minimum=None,maximum=None,reduced=False)
-            compare_inputs(61,epsilon,minimum=None,maximum=None,reduced=True)
+            #compare_inputs(61,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
 
 
             # vertexMass
             #compare_inputs(62,epsilon,minimum=None,maximum=75,reduced=False)
-            compare_inputs(62,epsilon,minimum=None,maximum=75,reduced=True)
+            #compare_inputs(62,epsilon,minimum=0,maximum=20,reduced=True)
 
 
             # jetNSecondaryVertices
             # ok
             #compare_inputs(63,epsilon,minimum=None,maximum=None,reduced=False)
-            compare_inputs(63,epsilon,minimum=None,maximum=None,reduced=True)
+            compare_inputs(63,epsilon,minimum=-0.5,maximum=None,reduced=True)
 
 
             # jetNSelectedTracks
             #compare_inputs(64,epsilon,minimum=None,maximum=None,reduced=False)
-            compare_inputs(64,epsilon,minimum=None,maximum=None,reduced=True)
+            compare_inputs(64,epsilon,minimum=-0.5,maximum=None,reduced=True)
 
 
             # jetNTracksEtaRel
             #compare_inputs(65,epsilon,minimum=None,maximum=None,reduced=False)
-            compare_inputs(65,epsilon,minimum=None,maximum=None,reduced=True)
+            compare_inputs(65,epsilon,minimum=-0.5,maximum=None,reduced=True)
 
 
             # vertexNTracks
             #compare_inputs(66,epsilon,minimum=None,maximum=None,reduced=False)
-            compare_inputs(66,epsilon,minimum=None,maximum=None,reduced=True)
+            compare_inputs(66,epsilon,minimum=-0.5,maximum=None,reduced=True)
             
