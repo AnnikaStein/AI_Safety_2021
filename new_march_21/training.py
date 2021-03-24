@@ -51,15 +51,15 @@ weighting_method = args.wm
     Weighting method:
         '_as_is'  :  apply no weighting factors at all
         ''        :  with factor 1 - relative frequency per flavour category
-        '_new'    :  with factor 1 / relative frequency per flavour category
+        '_new'    :  n_samples / (n_classes * n_class_count) per flavour category in loss function
         '_wrs'    :  using WeightedRandomSampler with n_samples / (n_classes * n_class_count)
 '''
 #weighting_method = '_as_is'    # this is now controlled by the parser above
 print(f'weighting method: {weighting_method}')    
 
 # Parameters for the training and validation    
-bsize = 1000000     # this might seem large, but for comparison: bsize of 250000 for 86M training inputs
-lrate = 0.000005     # initial learning rate, only for first epoch
+bsize = 2000000     # this might seem large, but for comparison: bsize of 250000 for 86M training inputs
+lrate = 0.00001     # initial learning rate, only for first epoch
 #prev_epochs = 0   # this is now controlled by the parser above
 
 # Manually update the file path to the latest training job message
@@ -121,6 +121,8 @@ if weighting_method == '_wrs':
         num_samples=len(class_weights),
         replacement=True)
     trainloader = torch.utils.data.DataLoader(allin, batch_size=bsize, sampler=sampler, num_workers=0, pin_memory=True)
+
+    
 else:
     trainloader = torch.utils.data.DataLoader(allin, batch_size=bsize, shuffle=True, num_workers=0, pin_memory=True)
 
@@ -206,7 +208,10 @@ if weighting_method == '':
 
     criterion = nn.CrossEntropyLoss(weight=class_weights)
 elif weighting_method == '_new':
-    allweights = np.array([0.20122289527951495, 0.7231497024692051, 0.07015390306977802, 0.005473499181501858])
+    allweights = compute_class_weight(
+           'balanced',
+            classes=np.array([0,1,2,3]), 
+            y=torch.cat([torch.load(train_target_file_paths[f]) for f in range(NUM_DATASETS)]).numpy())
     class_weights = torch.FloatTensor(allweights).to(device)
 
     criterion = nn.CrossEntropyLoss(weight=class_weights)
@@ -231,7 +236,7 @@ def new_learning_rate(ep):
     for g in optimizer.param_groups:
         print('lr: ', g['lr'], 'prev epoch')
         #g['lr'] = lrate/(1+ep/5)
-        g['lr'] = 0.000005
+        g['lr'] = 0.00001
         #print('lr: ', g['lr'], 'after update')
         
 #The training algorithm
