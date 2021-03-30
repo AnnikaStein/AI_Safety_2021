@@ -8,6 +8,8 @@ import torch.nn as nn
 
 from sklearn import metrics
 
+from scipy.stats import entropy
+
 import gc
 
 import coffea.hist as hist
@@ -313,6 +315,10 @@ input_names = ['Jet_eta',
  'Jet_DeepCSV_jetNTracksEtaRel',
  'Jet_DeepCSV_vertexNTracks',]
 
+
+relative_entropies = []
+
+
 display_names = ['Jet $\eta$',
                 'Jet $p_T$',
                 'Flight Distance 2D Sig','Flight Distance 2D Val','Flight Distance 3D Sig', 'Flight Distance 3D Val',
@@ -451,6 +457,7 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
     ax1.get_legend().remove()
     ax1.legend([f'Noise $\sigma$={magn[1]}',f'Noise $\sigma$={magn[2]}','Raw'])
     
+    running_relative_entropies = []    
     for si in range(1,len(magn)):
         num = compHist[f"noise $\sigma$={magn[si]}"].sum('sample').values()[()]
         denom = compHist['raw'].sum('sample').values()[()]
@@ -458,6 +465,24 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
         num_err = np.sqrt(num)
         denom_err = np.sqrt(denom)
         ratio_err = np.sqrt((num_err/denom)**2+(num/(denom**2)*denom_err)**2)
+        
+        
+        '''
+            Kullback-Leibler divergence with raw (denom ratio plot) and disturbed (num ratio plot) data: relative entropy
+            
+            S = sum(pk * log(pk / qk), axis=axis) where, in this case, p_k are the raw entries in the histogram and q_k the distorted ones
+            
+            This now depends on the way the bins were defined, e.g. the range and the number of bins / bin edges.
+            
+            Need to correct for the fact that not all bins are relevant for our studies as the defaults should be ignored / excluded from this calculation. Start to apply this
+            to "unproblematic" jet variables first to avoid impact of defaults.
+            EDIT: this is already covered by the defintion of minimum and maximum for the bins as specified above (implementation) / below (when calling the function),
+            good to go for all the other variables as well! Expected behaviour: the variables with easily visible impact should have a higher relative entropy than those where you almost can't
+            see any difference (approximately S=0), because log(ratio) will be 0 if the ratio is 1 ("no uncertainty").
+        '''
+        entr = entropy(denom, qk=num)
+        #print(f'{variable} ({input_names[variable]}):\t Noise $\sigma$={magn[si]}\t {entr}')
+        running_relative_entropies.append([variable, magn[si], entr])
         
         if si == 1:
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
@@ -468,7 +493,10 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
         ax2.set_ylim(0,2)
         ax2.set_xlim(minimum,maximum)
         ax2.set_ylabel('Noise/raw')
-        
+    
+    relative_entropies.append(running_relative_entropies)
+    print(relative_entropies)
+    
     sigm = ''
     for sig in magn:
         sigm = sigm + '_' + str(sig).replace('.','')
@@ -477,12 +505,14 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        pass
     else:
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        pass
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -623,6 +653,7 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
     ax1.get_legend().remove()
     ax1.legend([f'FGSM $\epsilon$={epsilon[1]}',f'FGSM $\epsilon$={epsilon[2]}','Raw'])
     
+    running_relative_entropies = []
     for si in range(1,len(epsilon)):
         num = compHist[f"fgsm $\epsilon$={epsilon[si]}"].sum('sample').values()[()]
         denom = compHist['raw'].sum('sample').values()[()]
@@ -630,6 +661,16 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         num_err = np.sqrt(num)
         denom_err = np.sqrt(denom)
         ratio_err = np.sqrt((num_err/denom)**2+(num/(denom**2)*denom_err)**2)
+        
+        '''
+            Kullback-Leibler divergence with raw (denom ratio plot) and disturbed (num ratio plot) data: relative entropy
+            
+            As explained above
+        '''
+        entr = entropy(denom, qk=num)
+        #print(f'{prop} ({input_names[prop]}):\t FGSM $\sigma$={epsilon[si]}\t {entr}')
+        running_relative_entropies.append([prop, epsilon[si], entr])
+        
         
         if si == 1:
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
@@ -639,7 +680,9 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         ax2.set_ylim(0,2)
         ax2.set_xlim(minimum,maximum)
         ax2.set_ylabel('FGSM/raw')
-        
+    
+    relative_entropies.append(running_relative_entropies)
+    print(relative_entropies)
         
     if method == 0:
         method_text = 'no weighting'
@@ -662,12 +705,14 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        pass
     else:
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
+        pass
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -734,11 +779,11 @@ else:
             # Jet eta
             #apply_noise(variable=0,magn=magn,minimum=None,maximum=None)
             apply_noise(variable=0,magn=magn,minimum=None,maximum=None)
-
+            
             # Jet pt
             #apply_noise(variable=1,magn=magn,minimum=None,maximum=1000)
             apply_noise(variable=1,magn=magn,minimum=None,maximum=250)
-
+            
             # flightDist2DSig
             #apply_noise(variable=2,magn=magn,minimum=None,maximum=80)
             apply_noise(variable=2,magn=magn,minimum=-0.1,maximum=100)
@@ -774,7 +819,13 @@ else:
 
             #apply_noise(variable=11,magn=magn,minimum=-0.1,maximum=5)
             apply_noise(variable=11,magn=magn,minimum=-0.1,maximum=1)
-
+            
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_1_kullback_leibler_{magn}.npy', kl)
+            
+            
         elif fromVar == 12:
             # trackDeltaR
             #apply_noise(variable=12,magn=magn,minimum=-0.01,maximum=0.31)
@@ -808,9 +859,15 @@ else:
 
             #apply_noise(variable=21,magn=magn,minimum=0,maximum=9)
             apply_noise(variable=21,magn=magn,minimum=-0.1,maximum=9)
+             
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_2_kullback_leibler_{magn}.npy', kl)
 
+            
         elif fromVar == 22:
-            '''
+            
             # trackJetDistVal
             #apply_noise(variable=22,magn=magn,minimum=-0.08,maximum=0.0025)
             apply_noise(variable=22,magn=magn,minimum=-0.08,maximum=0.0025)
@@ -829,13 +886,13 @@ else:
 
             #apply_noise(variable=27,magn=magn,minimum=-0.1,maximum=0.01)
             apply_noise(variable=27,magn=magn,minimum=-0.08,maximum=0.0025)
-            '''
+            
 
             # trackJetPt
             #apply_noise(variable=28,magn=magn,minimum=None,maximum=575)
             apply_noise(variable=28,magn=magn,minimum=None,maximum=250)
 
-            '''
+            
             # trackPtRatio
             #apply_noise(variable=29,magn=magn,minimum=0,maximum=0.301)
             apply_noise(variable=29,magn=magn,minimum=-0.001,maximum=0.301)
@@ -854,7 +911,13 @@ else:
 
             #apply_noise(variable=34,magn=magn,minimum=-0.05,maximum=0.4)
             apply_noise(variable=34,magn=magn,minimum=-0.001,maximum=0.301)
-            '''
+             
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_3_kullback_leibler_{magn}.npy', kl)
+            
+            
         elif fromVar == 35:
             # trackPtRel
             #apply_noise(variable=35,magn=magn,minimum=-0.1,maximum=6)
@@ -900,6 +963,12 @@ else:
 
             #apply_noise(variable=48,magn=magn,minimum=-2.1,maximum=0.1)
             apply_noise(variable=48,magn=magn,minimum=-0.06,maximum=0.06)
+             
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_4_kullback_leibler_{magn}.npy', kl)
+            
 
         elif fromVar == 49:
             # trackSip3d (SigAboveCharm, Sig, ValAbove Charm)
@@ -936,6 +1005,12 @@ else:
             # trackSumJetEtRatio
             #apply_noise(variable=58,magn=magn,minimum=None,maximum=2.1)
             apply_noise(variable=58,magn=magn,minimum=None,maximum=1.4)
+             
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_5_kullback_leibler_{magn}.npy', kl)
+            
 
         elif fromVar == 59:
             # vertexCat
@@ -978,9 +1053,15 @@ else:
             # vertexNTracks
             #apply_noise(variable=66,magn=magn,minimum=None,maximum=None)
             apply_noise(variable=66,magn=magn,minimum=-0.5,maximum=None)
+             
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_6_kullback_leibler_{magn}.npy', kl)
+            
     else:
-        epsilon = [0,0.005,0.01]
-        #epsilon = [0,0.05,0.1]
+        #epsilon = [0,0.005,0.01]
+        epsilon = [0,0.05,0.1]
         #compare_inputs(35,epsilon=[0,0.1,0.9],minimum=0,maximum=6,reduced=True)
         if fromVar == 0:
             # Jet eta
@@ -1026,7 +1107,13 @@ else:
 
             #compare_inputs(11,epsilon,minimum=-0.1,maximum=5,reduced=False)
             compare_inputs(11,epsilon,minimum=-0.1,maximum=1,reduced=True)
+            
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_1_kullback_leibler_{epsilon}.npy', kl)
 
+            
         elif fromVar == 12:
             # trackDeltaR
             #compare_inputs(12,epsilon,minimum=0,maximum=0.301,reduced=False)
@@ -1060,9 +1147,15 @@ else:
 
             #compare_inputs(21,epsilon,minimum=0,maximum=9,reduced=False)
             compare_inputs(21,epsilon,minimum=-0.1,maximum=9,reduced=True)
+             
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_2_kullback_leibler_{epsilon}.npy', kl)
+            
 
         elif fromVar == 22:
-            '''
+            
             # trackJetDistVal
             #compare_inputs(22,epsilon,minimum=-0.08,maximum=0.0025,reduced=False)
             compare_inputs(22,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
@@ -1081,13 +1174,13 @@ else:
 
             #compare_inputs(27,epsilon,minimum=-0.1,maximum=0.01,reduced=False)
             compare_inputs(27,epsilon,minimum=-0.08,maximum=0.0025,reduced=True)
-            '''
+            
 
             # trackJetPt
             #compare_inputs(28,epsilon,minimum=None,maximum=575,reduced=False)
             compare_inputs(28,epsilon,minimum=None,maximum=250,reduced=True)
 
-            '''
+            
             # trackPtRatio
             #compare_inputs(29,epsilon,minimum=0,maximum=0.301,reduced=False)
             compare_inputs(29,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
@@ -1106,7 +1199,13 @@ else:
 
             #compare_inputs(34,epsilon,minimum=-0.05,maximum=0.4,reduced=False)
             compare_inputs(34,epsilon,minimum=-0.001,maximum=0.301,reduced=True)
-            '''
+            
+             
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_3_kullback_leibler_{epsilon}.npy', kl)
+            
+            
         elif fromVar == 35:
             # trackPtRel
             #compare_inputs(35,epsilon,minimum=-0.1,maximum=6,reduced=False)
@@ -1151,7 +1250,13 @@ else:
             compare_inputs(47,epsilon,minimum=-7,maximum=2,reduced=True)
 
             #compare_inputs(48,epsilon,minimum=-2.1,maximum=0.1,reduced=False)
-            compare_inputs(48,epsilon,minimum=-0.06,maximum=0.06,reduced=True)
+            compare_inputs(48,epsilon,minimum=-0.06,maximum=0.06,reduced=True) 
+            
+            
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_4_kullback_leibler_{epsilon}.npy', kl)
+            
 
         elif fromVar == 49:
             # trackSip3d (SigAboveCharm, Sig, ValAbove Charm)
@@ -1188,6 +1293,12 @@ else:
             # trackSumJetEtRatio
             #compare_inputs(58,epsilon,minimum=None,maximum=2.1,reduced=False)
             compare_inputs(58,epsilon,minimum=None,maximum=1.4,reduced=True)
+             
+                
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_5_kullback_leibler_{epsilon}.npy', kl)
+            
 
         elif fromVar == 59:
             # vertexCat
@@ -1230,4 +1341,9 @@ else:
             # vertexNTracks
             #compare_inputs(66,epsilon,minimum=None,maximum=None,reduced=False)
             compare_inputs(66,epsilon,minimum=-0.5,maximum=None,reduced=True)
+             
+                
+            kl = np.array(relative_entropies)
+            print(kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_6_kullback_leibler_{epsilon}.npy', kl)
             
