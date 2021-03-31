@@ -480,6 +480,13 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
             good to go for all the other variables as well! Expected behaviour: the variables with easily visible impact should have a higher relative entropy than those where you almost can't
             see any difference (approximately S=0), because log(ratio) will be 0 if the ratio is 1 ("no uncertainty").
         '''
+        # if the distorted sample contains zero entries in a given bin, but the raw one does, the KL-divergence will be infinity (if both are 0: entropy-function assigns 0 automatically)
+        # correction can be applied by replacing the "0" by "1" (this is small compared to the number of entries in total)
+        # therefore one needs to check that only the distorted one is 0, the raw one is not
+        
+        num[(num == 0) & (denom != 0)] = 1
+        
+        
         entr = entropy(denom, qk=num)
         #print(f'{variable} ({input_names[variable]}):\t Noise $\sigma$={magn[si]}\t {entr}')
         running_relative_entropies.append([variable, magn[si], entr])
@@ -667,6 +674,7 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
             
             As explained above
         '''
+        num[(num == 0) & (denom != 0)] = 1
         entr = entropy(denom, qk=num)
         #print(f'{prop} ({input_names[prop]}):\t FGSM $\sigma$={epsilon[si]}\t {entr}')
         running_relative_entropies.append([prop, epsilon[si], entr])
@@ -827,6 +835,7 @@ else:
             
             
         elif fromVar == 12:
+            '''
             # trackDeltaR
             #apply_noise(variable=12,magn=magn,minimum=-0.01,maximum=0.31)
             apply_noise(variable=12,magn=magn,minimum=-0.001,maximum=0.301)
@@ -856,14 +865,15 @@ else:
 
             #apply_noise(variable=20,magn=magn,minimum=0,maximum=9)
             apply_noise(variable=20,magn=magn,minimum=-0.1,maximum=9)
-
+            '''
             #apply_noise(variable=21,magn=magn,minimum=0,maximum=9)
             apply_noise(variable=21,magn=magn,minimum=-0.1,maximum=9)
              
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_2_kullback_leibler_{magn}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_2_kullback_leibler_{magn}.npy', kl)
+            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_2_kullback_leibler_{magn}_onlyINFetarel3.npy', kl)
 
             
         elif fromVar == 22:
