@@ -12,7 +12,7 @@
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=40:30:00
+#SBATCH --time=64:30:00
 
 #SBATCH --account=rwth0583
 
@@ -30,4 +30,4 @@ module load cuda/110
 module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
-python3 tt_training.py 49 52 18 '_new'
+python3 tt_training.py 49 120 30 '_new'
