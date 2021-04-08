@@ -30,4 +30,4 @@ module load cuda/110
 module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
-python3 tt_training.py 49 120 30 '_new'
+python3 tt_training.py 49 150 30 '_new'
