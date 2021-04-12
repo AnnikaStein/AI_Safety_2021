@@ -8,11 +8,11 @@
 
 #SBATCH --cpus-per-task=1
 
-#SBATCH --job-name=AUCranking
+# SBATCH --job-name=AUCranking
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=1:30:00
+#SBATCH --time=4:00:00
 
 #SBATCH --account=rwth0583
 
@@ -27,7 +27,7 @@
 cd /home/um106329/aisafety/new_march_21/code
 source ~/miniconda3/bin/activate
 conda activate my-env
-python3 auc_ranking_attack_parallel.py 49 ${MIN} ${MAX} 'FGSM' '0.005'
+python3 auc_ranking_attack_parallel.py ${NUM_F} ${MIN} ${MAX} ${MODE} ${PARAM} ${TRAINDATASET}
 # python3 auc_ranking_attack_parallel.py 49 7 11 'noise' '0.005'
 # python3 auc_ranking_attack_parallel.py 49 12 17 'noise' '0.005'
 # python3 auc_ranking_attack_parallel.py 49 18 23 'noise' '0.005'
