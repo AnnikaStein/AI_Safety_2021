@@ -1,4 +1,4 @@
-import multiprocessing as mp
+#import multiprocessing as mp
 
 #import uproot4 as uproot
 import numpy as np
@@ -44,6 +44,7 @@ parser.add_argument("start", type=int, help="Start index")
 parser.add_argument("end", type=int, help="End index")
 parser.add_argument("mode", type=str, help="Mode: raw, noise, FGSM")
 parser.add_argument("param", type=float, help="Parameter used for attack, or 0 for raw")
+parser.add_argument("traindataset", type=str, help="Dataset used during training, qcd or tt")
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -51,8 +52,10 @@ start = args.start
 end = args.end
 mode = args.mode
 param = args.param
+traindataset = args.traindataset
 
-
+print('Parameters for this AUC ranking:')
+print(f'NUM_DATASETS:\t{NUM_DATASETS}\nstart:\t{start}\nend:\t{end}\nmode:\t{mode}\nparam:\t{param}\ntraindataset:\t{traindataset}\n')
 
 
 
@@ -164,7 +167,8 @@ val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_t
 train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
 train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-all_target_file_paths = test_target_file_paths + val_target_file_paths + train_target_file_paths
+all_target_file_paths_2D = [[test_target_file_paths[i],val_target_file_paths[i],train_target_file_paths[i]] for i in range(0,NUM_DATASETS)]
+all_target_file_paths = [item for sublist in all_target_file_paths_2D for item in sublist]
 
 flav = torch.cat(tuple(torch.load(ti) for ti in all_target_file_paths)).numpy().astype(int) + 1
 
@@ -195,7 +199,8 @@ def auc_ranking(deepcsv_input):
 
 def auc_ranking_parallel(deepcsv_input):
     
-    all_input_file_paths = test_input_file_paths + val_input_file_paths + train_input_file_paths
+    all_input_file_paths_2D = [[test_input_file_paths[i],val_input_file_paths[i],train_input_file_paths[i]] for i in range(0,NUM_DATASETS)]
+    all_input_file_paths = [item for sublist in all_input_file_paths_2D for item in sublist]
     
     raw_inputs = torch.cat(tuple(torch.load(ti)[:,deepcsv_input] for ti in all_input_file_paths)).numpy()
     
@@ -261,7 +266,7 @@ if mode == 'raw':
 
     #auc_ranking(raw_inputs)
     
-    
+    '''
     # Step 1: Init multiprocessing.Pool()
     N_cpus = mp.cpu_count()
     print(N_cpus)
@@ -273,7 +278,11 @@ if mode == 'raw':
     print(outs)
        
     # Step 3: Don't forget to close
-    pool.close()    
+    pool.close()  
+    '''
+    
+    outs = [auc_ranking_parallel(i) for i in range(start, end+1)]
+    
     
     list_variables = [outs[i][0] for i in range(len(outs))]
     list_auc_bvl = [outs[i][1] for i in range(len(outs))]
@@ -298,6 +307,7 @@ if mode == 'raw':
 def apply_noise(variable=0,magn=[param],offset=[0]):
     xmagn = []
     for s in range(0, NUM_DATASETS):
+        #print('Current dataset: ',s)
         scalers = torch.load(scalers_file_paths[s])
         test_inputs =  torch.load(test_input_file_paths[s])[:,variable].float()
         val_inputs =  torch.load(val_input_file_paths[s])[:,variable].float()
@@ -424,7 +434,7 @@ if mode == 'noise':
     
     auc_ranking(noise_inputs)
     '''
-    
+    '''
     # Step 1: Init multiprocessing.Pool()
     N_cpus = mp.cpu_count()
     print(N_cpus)
@@ -437,6 +447,9 @@ if mode == 'noise':
        
     # Step 3: Don't forget to close
     pool.close()    
+    '''
+    
+    outs = [apply_noise(i) for i in range(start, end+1)]
     
     list_variables = [outs[i][0] for i in range(len(outs))]
     list_auc_bvl = [outs[i][1] for i in range(len(outs))]
@@ -444,7 +457,7 @@ if mode == 'noise':
     
         
     df = pd.DataFrame(list(zip(list_variables, list_auc_bvl, list_auc_bvc)), columns =['input_name', 'auc_bvl', 'auc_bvc'])
-    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
+    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_noise/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
     
     
 # =======================================================================================
@@ -599,8 +612,12 @@ if mode == 'FGSM':
                           nn.Softmax(dim=1))
 
 
-
-    checkpoint = torch.load(f'/home/um106329/aisafety/new_march_21/models/model_all_TT_156_epochs_v10_GPU_weighted_new_49_datasets.pt', map_location=torch.device(device))
+    if traindataset == 'tt':
+        checkpoint = torch.load(f'/home/um106329/aisafety/new_march_21/models/model_all_TT_180_epochs_v10_GPU_weighted_new_49_datasets.pt', map_location=torch.device(device))
+        outdirname = 'df_auc_TT180'
+    elif traindataset == 'qcd':
+        checkpoint = torch.load(f'/home/um106329/aisafety/models/weighted/200_full_files_120_epochs_v13_GPU_weighted_as_is.pt', map_location=torch.device(device))
+        outdirname = 'df_auc_QCD120'
     model.load_state_dict(checkpoint["model_state_dict"])
 
 
@@ -609,7 +626,7 @@ if mode == 'FGSM':
     #test_inputs.cuda()
     #test_inputs = test_inputs.type(torch.cuda.FloatTensor)
     #print(type(test_inputs))
-    #model.eval()
+    model.eval()
     #predsTensor = model(test_inputs).detach()
     #predictions = predsTensor.cpu().numpy()
     #print('predictions done')
@@ -650,8 +667,7 @@ if mode == 'FGSM':
     
         
     df = pd.DataFrame(list(zip(list_variables, list_auc_bvl, list_auc_bvc)), columns =['input_name', 'auc_bvl', 'auc_bvc'])
-    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
-
+    df.to_pickle(f'/home/um106329/aisafety/new_march_21/{outdirname}/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
 
 
 
