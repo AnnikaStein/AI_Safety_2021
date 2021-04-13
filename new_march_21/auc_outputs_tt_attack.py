@@ -40,13 +40,15 @@ device = torch.device('cpu')
 
 parser = argparse.ArgumentParser(description="Setup for AUC for model output")
 parser.add_argument("files", type=int, help="Number of files for AUC")
-parser.add_argument("mode", type=str, help="Mode: raw, noise, FGSM")
-parser.add_argument("param", type=float, help="Parameter used for attack, or 0 for raw")
+parser.add_argument("mode", type=str, help="Mode: raw, deepcsv, noise, FGSM")
+parser.add_argument("param", type=float, help="Parameter used for attack, or 0 for raw / deepcsv")
+parser.add_argument("traindataset", type=str, help="Dataset used during training, qcd or tt")
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
 mode = args.mode
 param = args.param
+traindataset = args.traindataset
 
 #print('Parameters for this AUC ranking:')
 #print(f'NUM_DATASETS:\t{NUM_DATASETS}\nstart:\t{start}\nend:\t{end}\nmode:\t{mode}\nparam:\t{param}\ntraindataset:\t{traindataset}\n')
@@ -149,19 +151,37 @@ input_names = ['Jet_eta',
 
 
 
+if traindataset == 'tt':
+    scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    DeepCSV_testset_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-#DeepCSV_testset_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    #val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    #val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-#val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-#val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    #train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    #train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    
+    suffix = 'TT'
 
-#train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-#train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+else:
+    scalers_file_paths = ['/work/um106329/MA/cleaned/preprocessed/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    DeepCSV_testset_file_paths = ['/work/um106329/MA/cleaned/preprocessed/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    test_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    #val_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    #val_target_file_paths = [/work/um106329/MA/cleaned/preprocessed/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    #train_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    #train_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    
+    suffix = 'QCD'
 
 #all_target_file_paths_2D = [[test_target_file_paths[i],val_target_file_paths[i],train_target_file_paths[i]] for i in range(0,NUM_DATASETS)]
 #all_target_file_paths = [item for sublist in all_target_file_paths_2D for item in sublist]
@@ -181,19 +201,12 @@ print('number of test inputs', len(test_inputs))
 
 test_targets = torch.cat(tuple(torch.load(ti) for ti in test_target_file_paths)).float()
 print('test targets done')
-#DeepCSV_testset = np.concatenate([torch.load(ti) for ti in DeepCSV_testset_file_paths])
-#print('DeepCSV test done')
+
 
 jetFlavour = test_targets+1
 
 
-allweights = compute_class_weight(
-           'balanced',
-            classes=np.array([0,1,2,3]), 
-            y=test_targets.numpy())
-class_weights = torch.FloatTensor(allweights).to(device)
-
-criterion = nn.CrossEntropyLoss(weight=class_weights)
+# ================= Load model and corresponding loss function (weights) =================
 
 model = nn.Sequential(nn.Linear(67, 100),
                       nn.ReLU(),
@@ -212,7 +225,29 @@ model = nn.Sequential(nn.Linear(67, 100),
                       nn.Linear(100, 4),
                       nn.Softmax(dim=1))
 
-checkpoint = torch.load(f'/home/um106329/aisafety/new_march_21/models/model_all_TT_180_epochs_v10_GPU_weighted_new_49_datasets.pt', map_location=torch.device(device))
+
+if traindataset == 'tt':
+    allweights = compute_class_weight(
+           'balanced',
+            classes=np.array([0,1,2,3]), 
+            y=test_targets.numpy())
+    class_weights = torch.FloatTensor(allweights).to(device)
+
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    
+    checkpoint = torch.load(f'/home/um106329/aisafety/new_march_21/models/model_all_TT_180_epochs_v10_GPU_weighted_new_49_datasets.pt', map_location=torch.device(device))
+    
+    with open('/home/um106329/aisafety/new_march_21/length_test_datasets_TT.npy', 'rb') as f:
+        length_data_test = np.load(f)
+    
+else:
+    criterion = nn.CrossEntropyLoss()
+        
+    checkpoint = torch.load(f'/home/um106329/aisafety/models/weighted/200_full_files_120_epochs_v13_GPU_weighted_as_is.pt', map_location=torch.device(device))
+    
+    with open('/home/um106329/aisafety/length_data_test.npy', 'rb') as f:
+        length_data_test = np.load(f)
+    
 model.load_state_dict(checkpoint["model_state_dict"])
 
 model.to(device)
@@ -220,8 +255,7 @@ model.to(device)
 model.eval()
 
 
-with open('/home/um106329/aisafety/new_march_21/length_test_datasets_TT.npy', 'rb') as f:
-    length_data_test = np.load(f)
+# ========================================================================================
 
     
     
@@ -280,7 +314,48 @@ if mode == 'raw':
     print(f'Raw AUC bvl: {auc_bvl}, AUC bvc: {auc_bvc}')
     
     df = pd.DataFrame(data={'input_name' : ['Raw'], 'auc_bvl' : [auc_bvl], 'auc_bvc' : [auc_bvc]}, columns =['input_name', 'auc_bvl', 'auc_bvc'])
-    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_CUSTOM_TAGGER_OUT.pkl')
+    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_CUSTOM_TAGGER_OUT_{suffix}.pkl')
+    
+     
+    
+# ========================================================================================
+
+
+
+# ======================================= DeepCSV ========================================    
+
+elif mode == 'deepcsv':
+    DeepCSV_testset = np.concatenate([torch.load(ti) for ti in DeepCSV_testset_file_paths])
+    print('DeepCSV test done')
+    
+    y_pred_bvl = np.concatenate((DeepCSV_testset[jetFlavour==1],DeepCSV_testset[jetFlavour==2],DeepCSV_testset[jetFlavour==4]))
+    y_true_bvl = torch.cat((test_targets[jetFlavour==1],test_targets[jetFlavour==2],test_targets[jetFlavour==4]))
+    
+    fpr,tpr,_ = metrics.roc_curve([(1 if y_true_bvl[i]==0 or y_true_bvl[i]==1 else 0) for i in range(len(y_true_bvl))], (y_pred_bvl[:,0]+y_pred_bvl[:,1]))
+    del y_pred_bvl
+    del y_true_bvl
+    gc.collect()
+    
+     
+    auc_bvl = metrics.auc(fpr,tpr)
+    del fpr
+    del tpr
+    gc.collect()
+    
+    
+    y_pred_bvc = np.concatenate((test_inputs[jetFlavour==1],test_inputs[jetFlavour==2],test_inputs[jetFlavour==3]))
+    y_true_bvc = torch.cat((test_targets[jetFlavour==1],test_targets[jetFlavour==2],test_targets[jetFlavour==3]))
+    
+    fpr,tpr,_ = metrics.roc_curve([(1 if y_true_bvc[i]==0 or y_true_bvc[i]==1 else 0) for i in range(len(y_true_bvc))], (y_pred_bvc[:,0]+y_pred_bvc[:,1]))
+    auc_bvc = metrics.auc(fpr,tpr)
+    del fpr
+    del tpr
+    gc.collect()
+    
+    print(f'Raw AUC bvl: {auc_bvl}, AUC bvc: {auc_bvc}')
+    
+    df = pd.DataFrame(data={'input_name' : ['DeepCSV'], 'auc_bvl' : [auc_bvl], 'auc_bvc' : [auc_bvc]}, columns =['input_name', 'auc_bvl', 'auc_bvc'])
+    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_{suffix}.pkl')
     
      
     
@@ -315,6 +390,25 @@ def apply_noise(magn=param,sample=None, offset=[0]):
             for i in range(67):
                 xadv[:,i][defaults] = sample[:,i][defaults]
             break
+    
+    # ====== For QCD with -1 bin =======
+    if traindataset == 'qcd':
+        for i in [41, 48, 49, 56]:
+            defaults = np.zeros(len(sample))
+            for l, s in enumerate(length_data_test[:NUM_DATASETS]):
+                scalers = allscalers[l]
+                if l == 0:
+                    defaults[:int(s)] = abs(scalers[i].inverse_transform(sample[:int(s),i].cpu()) + 1.0) < 0.001
+                else:
+                    defaults[int(length_data_test[l-1]) : int(s)] = abs(scalers[i].inverse_transform(sample[int(length_data_test[l-1]) : int(s),i].cpu()) + 1.0) < 0.001
+
+            if np.sum(defaults) != 0:
+                for i in [41, 48, 49, 56]:
+                    xadv[:,i][defaults] = sample[:,i][defaults]
+                break
+    
+    
+    
     return xadv.detach()
 
 if mode == 'noise':
@@ -364,7 +458,7 @@ if mode == 'noise':
     print(f'Noise {param} AUC bvl: {auc_bvl}, AUC bvc: {auc_bvc}')
     
     df = pd.DataFrame(data={'input_name' : [f'Noise $\sigma={param}$'], 'auc_bvl' : [auc_bvl], 'auc_bvc' : [auc_bvc]}, columns =['input_name', 'auc_bvl', 'auc_bvc'])
-    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_CUSTOM_TAGGER_OUT_PARAM_{param}.pkl')
+    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_CUSTOM_TAGGER_OUT_PARAM_{param}_{suffix}.pkl')
     
 # =======================================================================================
 
@@ -417,6 +511,24 @@ def fgsm_attack(epsilon=1e-1,sample=None,targets=None,reduced=True):
                     for i in range(67):
                         xadv[:,i][defaults] = sample[:,i][defaults]
                     break
+            
+            # ====== For QCD with -1 bin =======
+            if traindataset == 'qcd':
+                for i in [41, 48, 49, 56]:
+                    defaults = np.zeros(len(sample))
+                    for l, s in enumerate(length_data_test[:NUM_DATASETS]):
+                        scalers = allscalers[l]
+                        if l == 0:
+                            defaults[:int(s)] = abs(scalers[i].inverse_transform(sample[:int(s),i].cpu()) + 1.0) < 0.001
+                        else:
+                            defaults[int(length_data_test[l-1]) : int(s)] = abs(scalers[i].inverse_transform(sample[int(length_data_test[l-1]) : int(s),i].cpu()) + 1.0) < 0.001
+
+                    if np.sum(defaults) != 0:
+                        for i in [41, 48, 49, 56]:
+                            xadv[:,i][defaults] = sample[:,i][defaults]
+                        break
+
+            
         return xadv.detach()
 
 
@@ -467,4 +579,4 @@ if mode == 'FGSM':
     print(f'FGSM {param} AUC bvl: {auc_bvl}, AUC bvc: {auc_bvc}')
     
     df = pd.DataFrame(data={'input_name' : [f'FGSM $\epsilon={param}$'], 'auc_bvl' : [auc_bvl], 'auc_bvc' : [auc_bvc]}, columns =['input_name', 'auc_bvl', 'auc_bvc'])
-    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_CUSTOM_TAGGER_OUT_PARAM_{param}.pkl')
+    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_CUSTOM_TAGGER_OUT_PARAM_{param}_{suffix}.pkl')

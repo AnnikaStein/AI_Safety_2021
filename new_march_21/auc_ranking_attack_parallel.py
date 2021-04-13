@@ -154,24 +154,39 @@ input_names = ['Jet_eta',
  'Jet_DeepCSV_vertexNTracks',]
 
 
+if traindataset == 'tt':
 
+    scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    outdirname = 'df_auc_TT180'
+else:
+    
+    scalers_file_paths = ['/work/um106329/MA/cleaned/preprocessed/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    test_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    val_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    train_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    
+    outdirname = 'df_auc_QCD120'
 
 all_target_file_paths_2D = [[test_target_file_paths[i],val_target_file_paths[i],train_target_file_paths[i]] for i in range(0,NUM_DATASETS)]
 all_target_file_paths = [item for sublist in all_target_file_paths_2D for item in sublist]
 
 flav = torch.cat(tuple(torch.load(ti) for ti in all_target_file_paths)).numpy().astype(int) + 1
-
 
 #list_variables = []
 #list_auc_bvl = []
@@ -290,8 +305,10 @@ if mode == 'raw':
     
         
     df = pd.DataFrame(list(zip(list_variables, list_auc_bvl, list_auc_bvc)), columns =['input_name', 'auc_bvl', 'auc_bvc'])
-    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
-
+    if traindataset == 'tt':
+        df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
+    else:
+        df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_raw_QCD/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
     #sorted_df = df.sort_values('auc_bvl')
 
 
@@ -332,13 +349,6 @@ def apply_noise(variable=0,magn=[param],offset=[0]):
                     xadv = np.rint(scalers[variable].inverse_transform(all_inputs))
 
                 '''
-                if variable in [41, 48, 49, 56]:
-                    defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
-                    if np.sum(defaults) != 0:
-                        xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
-                '''
-
-                '''
                 # as long as nothing was set to 0 manually, not really necessary
                 vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
                 vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
@@ -366,7 +376,13 @@ def apply_noise(variable=0,magn=[param],offset=[0]):
                     defaults = abs(all_inputs[:,variable].cpu() + 900) < 0
                     if np.sum(defaults) != 0:
                         xadv[defaults] = all_inputs[:,variable].cpu()[defaults]
-                '''        
+                '''    
+                if traindataset ==  'qcd':
+                    if variable in [41, 48, 49, 56]:
+                        defaults = abs(scalers[variable].inverse_transform(all_inputs.cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
+                        if np.sum(defaults) != 0:
+                            xadv[defaults] = scalers[variable].inverse_transform(all_inputs.cpu())[defaults]
+                            
                 xadv_new = np.concatenate((xmagn[i], xadv))
                 xmagn[i] = xadv_new
             else:
@@ -374,13 +390,6 @@ def apply_noise(variable=0,magn=[param],offset=[0]):
                 integervars = [59,63,64,65,66]
                 if variable in integervars:
                     xadv = np.rint(scalers[variable].inverse_transform(all_inputs))
-                '''
-                if variable in [41, 48, 49, 56]:
-                    defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
-                    if np.sum(defaults) != 0:
-                        xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
-                '''        
-
                 '''
                 # as long as nothing was set to 0 manually, not really necessary
                 vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
@@ -409,7 +418,13 @@ def apply_noise(variable=0,magn=[param],offset=[0]):
                     if np.sum(defaults) != 0:
                         xadv[defaults] = all_inputs[:,variable].cpu()[defaults]
                 '''         
-
+                
+                if traindataset ==  'qcd':
+                    if variable in [41, 48, 49, 56]:
+                        defaults = abs(scalers[variable].inverse_transform(all_inputs.cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
+                        if np.sum(defaults) != 0:
+                            xadv[defaults] = scalers[variable].inverse_transform(all_inputs.cpu())[defaults]
+                
                 xmagn.append(xadv)
 
         del all_inputs
@@ -457,7 +472,11 @@ if mode == 'noise':
     
         
     df = pd.DataFrame(list(zip(list_variables, list_auc_bvl, list_auc_bvc)), columns =['input_name', 'auc_bvl', 'auc_bvc'])
-    df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_noise/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
+    
+    if outdirname == 'df_auc_TT180':
+        df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_noise/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
+    else:
+        df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_noise_QCD/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
     
     
 # =======================================================================================
@@ -502,13 +521,7 @@ def fgsm_attack(epsilon=param,sample=None,targets=None,reduced=True, scalers=Non
             #xadv[:,12:][sample[:,12:]==0] = 0   # TagVarCSVTrk_trackJetDistVal and so forth, but I have not set any variable to 0 manually during cleaning
             #xadv[:,input_names.index('Jet_DeepCSV_trackJetDistVal_0'):][sample[:,input_names.index('Jet_DeepCSV_trackJetDistVal_0'):] == 0] = 0
 
-            '''
-            for i in [41, 48, 49, 56]:
-                defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
-                if np.sum(defaults) != 0:
-                    for i in [41, 48, 49, 56]:
-                        xadv[:,i][defaults] = sample[:,i][defaults]
-                    break
+            '''            
             vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
             vars_with_0_defaults.extend([12, 13, 14, 15, 16, 17])       # trackDeltaR_0 to _5
             vars_with_0_defaults.extend([18, 19, 20, 21])               # trackEtaRel_0 to _3
@@ -528,6 +541,13 @@ def fgsm_attack(epsilon=param,sample=None,targets=None,reduced=True, scalers=Non
                     for i in range(67):
                         xadv[:,i][defaults] = sample[:,i][defaults]
                     break
+            if traindataset ==  'qcd':
+                for i in [41, 48, 49, 56]:
+                    defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
+                    if np.sum(defaults) != 0:
+                        for i in [41, 48, 49, 56]:
+                            xadv[:,i][defaults] = sample[:,i][defaults]
+                        break
         return xadv.detach()
 
 
@@ -582,18 +602,6 @@ def compare_inputs(prop=0,epsilon=[param],minimum=None,maximum=None,reduced=True
 
 
 if mode == 'FGSM':
-    allweights = compute_class_weight(
-               'balanced',
-                classes=np.array([0,1,2,3]), 
-                y=flav-1)
-    class_weights = torch.FloatTensor(allweights).to(device)
-    del allweights
-    gc.collect()
-
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
-    del class_weights
-    gc.collect()
-
     model = nn.Sequential(nn.Linear(67, 100),
                           nn.ReLU(),
                           nn.Dropout(0.1),
@@ -613,11 +621,25 @@ if mode == 'FGSM':
 
 
     if traindataset == 'tt':
+        allweights = compute_class_weight(
+               'balanced',
+                classes=np.array([0,1,2,3]), 
+                y=flav-1)
+        class_weights = torch.FloatTensor(allweights).to(device)
+        del allweights
+        gc.collect()
+
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
+        del class_weights
+        gc.collect()
+
         checkpoint = torch.load(f'/home/um106329/aisafety/new_march_21/models/model_all_TT_180_epochs_v10_GPU_weighted_new_49_datasets.pt', map_location=torch.device(device))
-        outdirname = 'df_auc_TT180'
+        
     elif traindataset == 'qcd':
+        criterion = nn.CrossEntropyLoss()
+        
         checkpoint = torch.load(f'/home/um106329/aisafety/models/weighted/200_full_files_120_epochs_v13_GPU_weighted_as_is.pt', map_location=torch.device(device))
-        outdirname = 'df_auc_QCD120'
+        
     model.load_state_dict(checkpoint["model_state_dict"])
 
 
@@ -667,7 +689,8 @@ if mode == 'FGSM':
     
         
     df = pd.DataFrame(list(zip(list_variables, list_auc_bvl, list_auc_bvc)), columns =['input_name', 'auc_bvl', 'auc_bvc'])
-    df.to_pickle(f'/home/um106329/aisafety/new_march_21/{outdirname}/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
+    df.to_pickle(f'/home/um106329/aisafety/new_march_21/{outdirname}/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}_{traindataset}.pkl')
+
 
 
 

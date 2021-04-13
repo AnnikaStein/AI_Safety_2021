@@ -27,4 +27,4 @@
 cd /home/um106329/aisafety/new_march_21/code
 source ~/miniconda3/bin/activate
 conda activate my-env
-python3 auc_outputs_tt_attack.py ${NUM_F} ${MODE} ${PARAM}
+python3 auc_outputs_tt_attack.py ${NUM_F} ${MODE} ${PARAM} ${TRAINDATASET}
