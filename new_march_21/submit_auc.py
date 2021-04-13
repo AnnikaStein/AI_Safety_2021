@@ -17,7 +17,7 @@ parser.add_argument('-s',"--start", type=int, help="Start index", default=0)
 parser.add_argument('-e',"--end", type=int, help="End index", default=66)
 parser.add_argument('-m',"--mode", type=str, help="Mode: raw, noise, FGSM", default="raw")
 parser.add_argument('-p',"--param", type=float, help="Parameter used for attack, or 0 for raw", default=0.0)
-parser.add_argument('-td',"--traindataset", type=str, help="Dataset used during training, qcd or tt", default="qcd")
+parser.add_argument('-td',"--traindataset", type=str, help="Dataset used during training, qcd or tt", default="tt")
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
