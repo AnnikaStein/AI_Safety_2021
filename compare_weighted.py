@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 
 from sklearn import metrics
+from sklearn.utils.class_weight import compute_class_weight
 
 from scipy.stats import entropy
 
@@ -23,12 +24,16 @@ parser.add_argument("fromVar", type=int, help="Starting number input variable")
 parser.add_argument("toVar", type=int, help="End with this input variable")
 parser.add_argument("attack", help="The type of the attack, noise or fgsm")
 parser.add_argument("fixRange", help="Use predefined range (yes) or just as is (no)")
+parser.add_argument("evaldataset", type=str, help="Dataset used during evaluation, qcd or tt")
+parser.add_argument("traindataset", type=str, help="Dataset used during training, qcd or tt")
 args = parser.parse_args()
 
 fromVar = args.fromVar
 toVar = args.toVar
 attack = args.attack
 fixRange = args.fixRange
+evaldataset = args.evaldataset
+traindataset = args.traindataset
 
 np.random.seed(0)
 
@@ -40,12 +45,11 @@ device = torch.device("cpu")
 
 method = 0
 
-epsilon = 0.01
+#epsilon = 0.01
 
-at_epoch = 120
+#at_epoch = 120
 
-NUM_DATASETS = 200  # this is only for the trained model (that used 200 files), if evaluation uses a different number, specify this below before loading the inputs
-#NUM_DATASETS = 49  # TTtoSemilep clean (for QCD clean: 229)
+
 '''
 eps = str(epsilon).replace('.','')
 with open(f"/home/um106329/aisafety/models/weighted/compare/after_{at_epoch}/epsilon_{eps}/log_%d.txt" % NUM_DATASETS, "w+") as text_file:
@@ -54,50 +58,122 @@ print(f'Do comparison plots at epoch {at_epoch} with epsilon={epsilon}')
 '''
 
 
+if evaldataset == 'qcd':
+    evalsuffix = '_QCD'
+    NUM_DATASETS = 200 
+    #NUM_DATASETS = 1
+    # Old inputs, not completely clean, QCD
+    scalers_file_paths = ['/work/um106329/MA/cleaned/preprocessed/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    test_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    DeepCSV_testset_file_paths = ['/work/um106329/MA/cleaned/preprocessed/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    '''
+    # QCD clean
+    scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaled/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    DeepCSV_testset_file_paths = ['/hpcwork/um106329/new_march_21/scaled/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    # TT to Semilep clean
+    scalers_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    test_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    DeepCSV_testset_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    '''
+
+elif evaldataset == 'tt':
+    evalsuffix = '_TT'
+    
+    NUM_DATASETS = 49
+    #NUM_DATASETS = 1
+    # TT to Semilep clean with -999 instead of -1
+    scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+    test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    DeepCSV_testset_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
+    train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
 '''
 
     Predictions: Without weighting
     
 '''
-
-criterion0 = nn.CrossEntropyLoss()
-
-
-
-model0 = nn.Sequential(nn.Linear(67, 100),
-                      nn.ReLU(),
-                      nn.Dropout(0.1),
-                      nn.Linear(100, 100),
-                      nn.ReLU(),
-                      nn.Dropout(0.1),
-                      nn.Linear(100, 100),
-                      nn.ReLU(),
-                      nn.Dropout(0.1),
-                      nn.Linear(100, 100),
-                      nn.ReLU(),
-                      nn.Dropout(0.1),
-                      nn.Linear(100, 100),
-                      nn.ReLU(),
-                      nn.Linear(100, 4),
-                      nn.Softmax(dim=1))
+if attack == 'fgsm':
+    model0 = nn.Sequential(nn.Linear(67, 100),
+                          nn.ReLU(),
+                          nn.Dropout(0.1),
+                          nn.Linear(100, 100),
+                          nn.ReLU(),
+                          nn.Dropout(0.1),
+                          nn.Linear(100, 100),
+                          nn.ReLU(),
+                          nn.Dropout(0.1),
+                          nn.Linear(100, 100),
+                          nn.ReLU(),
+                          nn.Dropout(0.1),
+                          nn.Linear(100, 100),
+                          nn.ReLU(),
+                          nn.Linear(100, 4),
+                          nn.Softmax(dim=1))
 
 
+    if traindataset == 'tt':
+        all_target_file_paths_2D = [[test_target_file_paths[i],val_target_file_paths[i],train_target_file_paths[i]] for i in range(0,NUM_DATASETS)]
+        all_target_file_paths = [item for sublist in all_target_file_paths_2D for item in sublist]
+        flav = torch.cat(tuple(torch.load(ti) for ti in all_target_file_paths)).numpy().astype(int) + 1
 
-checkpoint0 = torch.load(f'/home/um106329/aisafety/models/weighted/%d_full_files_{at_epoch}_epochs_v13_GPU_weighted_as_is.pt' % NUM_DATASETS, map_location=torch.device(device))
-model0.load_state_dict(checkpoint0["model_state_dict"])
+        allweights = compute_class_weight(
+               'balanced',
+                classes=np.array([0,1,2,3]), 
+                y=flav-1)
+        del flav
+        class_weights = torch.FloatTensor(allweights).to(device)
+        del allweights
+        gc.collect()
 
-model0.to(device)
+        criterion0 = nn.CrossEntropyLoss(weight=class_weights)
+        del class_weights
+        gc.collect()
 
+        checkpoint0 = torch.load(f'/home/um106329/aisafety/new_march_21/models/model_all_TT_180_epochs_v10_GPU_weighted_new_49_datasets.pt', map_location=torch.device(device))
 
+        trainsuffix = '_TT'
 
+    elif traindataset == 'qcd':
+        criterion0 = nn.CrossEntropyLoss()
 
-#evaluate network on inputs
-model0.eval()
-#predictions_as_is = model0(test_inputs).detach().numpy()
-#print('predictions without weighting done')
+        checkpoint0 = torch.load(f'/home/um106329/aisafety/models/weighted/200_full_files_120_epochs_v13_GPU_weighted_as_is.pt', map_location=torch.device(device))
 
+        trainsuffix = '_QCD'
 
+    model0.load_state_dict(checkpoint0["model_state_dict"])
+
+    model0.to(device)
+
+    #evaluate network on inputs
+    model0.eval()
+    #predictions_as_is = model0(test_inputs).detach().numpy()
+    #print('predictions without weighting done')
 
 '''
 
@@ -151,7 +227,7 @@ model1.eval()
     Predictions: With new weighting method
     
 '''
-
+'''
 # as calculated in dataset_info.ipynb
 allweights2 = [0.27580367992004956, 0.5756907770526237, 0.1270419391956182, 0.021463603831708488]      # these were the ones for QCD, n_all / n_class
 class_weights2 = torch.FloatTensor(allweights2).to(device)
@@ -191,60 +267,12 @@ model2.to(device)
 model2.eval()
 #predictions_new = model2(test_inputs).detach().numpy()
 #print('predictions with new weighting method done')
-
-
-
-
-
-
-'''
-# Old inputs, not completely clean, QCD
-# scalers
-scalers_file_paths = ['/work/um106329/MA/cleaned/preprocessed/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
-
-test_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-test_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-DeepCSV_testset_file_paths = ['/work/um106329/MA/cleaned/preprocessed/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_input_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_target_file_paths = ['/work/um106329/MA/cleaned/preprocessed/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-
-
-# QCD clean
-scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaled/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
-
-test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-DeepCSV_testset_file_paths = ['/hpcwork/um106329/new_march_21/scaled/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaled/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaled/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-
-# TT to Semilep clean
-scalers_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
-
-test_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-test_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-DeepCSV_testset_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_input_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_target_file_paths = ['/work/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
 '''
 
-NUM_DATASETS = 49
-# TT to Semilep clean with -999 instead of -1
-scalers_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/scalers_%d.pt' % k for k in range(0,NUM_DATASETS)]
 
-test_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-test_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/test_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-DeepCSV_testset_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/DeepCSV_testset_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-val_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/val_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_input_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_inputs_%d.pt' % k for k in range(0,NUM_DATASETS)]
-train_target_file_paths = ['/hpcwork/um106329/new_march_21/scaledTTtoSemilep/train_targets_%d.pt' % k for k in range(0,NUM_DATASETS)]
+
+
+
 
 
 input_names = ['Jet_eta',
@@ -360,12 +388,12 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                 if variable in integervars:
                     xadv = np.rint(scalers[variable].inverse_transform(all_inputs[:][:,variable].cpu()))
                 
-                '''
-                if variable in [41, 48, 49, 56]:
-                    defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
-                    if np.sum(defaults) != 0:
-                        xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
-                '''
+                if evaldataset == 'qcd':
+                    if variable in [41, 48, 49, 56]:
+                        defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
+                        if np.sum(defaults) != 0:
+                            xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
+                
                 
                 '''
                 # as long as nothing was set to 0 manually, not really necessary
@@ -384,12 +412,12 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                 '''
                     # For cleaned files (QCD or TT to Semileptonic)
                 '''
-                '''
+                
                 if variable in range(67):
-                    defaults = abs(scalers[i].inverse_transform(all_inputs[:,i].cpu()) + 999) < 300   # "floating point error" --> allow some error margin
+                    defaults = scalers[i].inverse_transform(all_inputs[:,i].cpu()) + 900 < 0   # "floating point error" --> allow some error margin
                     if np.sum(defaults) != 0:
                         xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
-                '''        
+                        
                 xadv_new = np.concatenate((xmagn[i], xadv))
                 xmagn[i] = xadv_new
             else:
@@ -397,12 +425,13 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                 integervars = [59,63,64,65,66]
                 if variable in integervars:
                     xadv = np.rint(scalers[variable].inverse_transform(all_inputs[:][:,variable].cpu()))
-                '''
-                if variable in [41, 48, 49, 56]:
-                    defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
-                    if np.sum(defaults) != 0:
-                        xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
-                '''        
+                
+                if evaldataset == 'qcd':
+                    if variable in [41, 48, 49, 56]:
+                        defaults = abs(scalers[variable].inverse_transform(all_inputs[:,variable].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
+                        if np.sum(defaults) != 0:
+                            xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
+                       
                 
                 '''
                 # as long as nothing was set to 0 manually, not really necessary
@@ -421,12 +450,12 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
                 '''
                     # For cleaned files (QCD or TT to Semileptonic)
                 '''
-                '''
+                
                 if variable in range(67):
-                    defaults = abs(scalers[i].inverse_transform(all_inputs[:,i].cpu()) + 999) < 300   # "floating point error" --> allow some error margin
+                    defaults = scalers[i].inverse_transform(all_inputs[:,variable].cpu()) + 900 < 0   # "floating point error" --> allow some error margin
                     if np.sum(defaults) != 0:
                         xadv[defaults] = scalers[variable].inverse_transform(all_inputs[:,variable].cpu())[defaults]
-                '''        
+                        
                 xmagn.append(xadv)
         del test_inputs
         del val_inputs
@@ -513,13 +542,15 @@ def apply_noise(magn=[1],offset=[0],variable=0,minimum=None,maximum=None):
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
-        pass
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/input_{variable}_{name_var}_with_noise{sigm}_no_range_spec_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #pass
     else:
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/input_{variable}_{name_var}_with_noise{sigm}_specific_range_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
-        pass
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/input_{variable}_{name_var}_with_noise{sigm}_specific_range_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #pass
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -595,6 +626,12 @@ def fgsm_attack(epsilon=1e-1,sample=None,targets=None,reduced=True, scalers=None
                     for i in range(67):
                         xadv[:,i][defaults] = sample[:,i][defaults]
                     break
+            if evaldataset ==  'qcd':
+                for i in [41, 48, 49, 56]:
+                    defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
+                    if np.sum(defaults) != 0:
+                        for i in [41, 48, 49, 56]:
+                            xadv[:,i][defaults] = sample[:,i][defaults]
         return xadv.detach()
   
        
@@ -627,6 +664,7 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
                 integervars = [59,63,64,65,66]
                 if prop in integervars:
                     xadv = np.rint(xadv)
+                    
                 xmagn.append(xadv)
         
         del scalers
@@ -714,13 +752,15 @@ def compare_inputs(prop=0,epsilon=0.1,minimum=None,maximum=None,reduced=True):
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
-        pass
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm{evalsuffix}/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_no_range_spec_{filename_text}_v2_model_{trainsuffix}_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #pass
     else:
         #fig.savefig(f'/home/um106329/aisafety/dpg21/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newQCDinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
         #fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_oldmodel_newTTinputs_{NUM_DATASETS}.svg', bbox_inches='tight')
-        pass
+        fig.savefig(f'/home/um106329/aisafety/new_march_21/models/inputs_with_fgsm{evalsuffix}/input_{prop}_{name_var}_with_{red}_fgsm{epsi}_specific_range_{filename_text}_v2_model_{trainsuffix}_{NUM_DATASETS}.svg', bbox_inches='tight')
+        #pass
     del fig, ax1, ax2
     gc.collect(2)
     
@@ -831,11 +871,11 @@ else:
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_1_kullback_leibler_{magn}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/noise_1_kullback_leibler_{magn}.npy', kl)
             
             
         elif fromVar == 12:
-            '''
+            
             # trackDeltaR
             #apply_noise(variable=12,magn=magn,minimum=-0.01,maximum=0.31)
             apply_noise(variable=12,magn=magn,minimum=-0.001,maximum=0.301)
@@ -865,15 +905,15 @@ else:
 
             #apply_noise(variable=20,magn=magn,minimum=0,maximum=9)
             apply_noise(variable=20,magn=magn,minimum=-0.1,maximum=9)
-            '''
+            
             #apply_noise(variable=21,magn=magn,minimum=0,maximum=9)
             apply_noise(variable=21,magn=magn,minimum=-0.1,maximum=9)
              
             
             kl = np.array(relative_entropies)
             print(kl)
-            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_2_kullback_leibler_{magn}.npy', kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_2_kullback_leibler_{magn}_onlyINFetarel3.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/noise_2_kullback_leibler_{magn}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/noise_2_kullback_leibler_{magn}_onlyINFetarel3.npy', kl)
 
             
         elif fromVar == 22:
@@ -925,7 +965,7 @@ else:
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_3_kullback_leibler_{magn}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/noise_3_kullback_leibler_{magn}.npy', kl)
             
             
         elif fromVar == 35:
@@ -977,7 +1017,7 @@ else:
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_4_kullback_leibler_{magn}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/noise_4_kullback_leibler_{magn}.npy', kl)
             
 
         elif fromVar == 49:
@@ -1019,7 +1059,7 @@ else:
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_5_kullback_leibler_{magn}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/noise_5_kullback_leibler_{magn}.npy', kl)
             
 
         elif fromVar == 59:
@@ -1067,7 +1107,7 @@ else:
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/noise_6_kullback_leibler_{magn}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/noise_6_kullback_leibler_{magn}.npy', kl)
             
     else:
         #epsilon = [0,0.005,0.01]
@@ -1121,7 +1161,7 @@ else:
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_1_kullback_leibler_{epsilon}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/fgsm_1_kullback_leibler_{epsilon}_model_{trainsuffix}.npy', kl)
 
             
         elif fromVar == 12:
@@ -1161,7 +1201,7 @@ else:
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_2_kullback_leibler_{epsilon}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/fgsm_2_kullback_leibler_{epsilon}_model_{trainsuffix}.npy', kl)
             
 
         elif fromVar == 22:
@@ -1213,7 +1253,7 @@ else:
              
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_3_kullback_leibler_{epsilon}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/fgsm_3_kullback_leibler_{epsilon}_model_{trainsuffix}.npy', kl)
             
             
         elif fromVar == 35:
@@ -1265,7 +1305,7 @@ else:
             
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_4_kullback_leibler_{epsilon}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/fgsm_4_kullback_leibler_{epsilon}_model_{trainsuffix}.npy', kl)
             
 
         elif fromVar == 49:
@@ -1307,7 +1347,7 @@ else:
                 
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_5_kullback_leibler_{epsilon}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/fgsm_5_kullback_leibler_{epsilon}_model_{trainsuffix}.npy', kl)
             
 
         elif fromVar == 59:
@@ -1355,5 +1395,5 @@ else:
                 
             kl = np.array(relative_entropies)
             print(kl)
-            np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise/fgsm_6_kullback_leibler_{epsilon}.npy', kl)
+            #np.save(f'/home/um106329/aisafety/new_march_21/models/inputs_with_noise{evalsuffix}/fgsm_6_kullback_leibler_{epsilon}_model_{trainsuffix}.npy', kl)
             

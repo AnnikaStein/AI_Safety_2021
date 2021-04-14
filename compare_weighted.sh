@@ -1,18 +1,18 @@
 #!/usr/local_rwth/bin/zsh
 
-#SBATCH --ntasks=2
+#SBATCH --ntasks=1
 
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=1
 
-#SBATCH --mem-per-cpu=3G
+#SBATCH --mem-per-cpu=160G
 
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=1
 
-#SBATCH --job-name=CP_NOISE_0
+# SBATCH --job-name=CP_NOISE_0
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=10:30:00
+# SBATCH --time=10:30:00
 
 #SBATCH --account=rwth0583
 
@@ -30,4 +30,4 @@ cd /home/um106329/aisafety
 #module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
-python3 compare_weighted.py
+python3 compare_weighted.py ${FROM} ${TO} ${MODE} ${FIXRANGE} ${EVALDATASET} ${TRAINDATASET}

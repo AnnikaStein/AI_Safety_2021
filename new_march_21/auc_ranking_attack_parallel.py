@@ -267,6 +267,53 @@ def auc_ranking_parallel_inputs_ready(deepcsv_input,inputs):
 
 # ======================================== Raw ===========================================    
 
+def do_raw(variable=0,magn=[param],offset=[0]):
+    xmagn = []
+    for s in range(0, NUM_DATASETS):
+        #print('Current dataset: ',s)
+        scalers = torch.load(scalers_file_paths[s])
+        test_inputs =  torch.load(test_input_file_paths[s])[:,variable].float()
+        val_inputs =  torch.load(val_input_file_paths[s])[:,variable].float()
+        train_inputs =  torch.load(train_input_file_paths[s])[:,variable].float()
+        #test_targets =  torch.load(test_target_file_paths[s]).to(device)
+        #val_targets =  torch.load(val_target_file_paths[s]).to(device)
+        #train_targets =  torch.load(train_target_file_paths[s]).to(device)            
+        all_inputs = torch.cat((test_inputs,val_inputs,train_inputs))
+        del test_inputs
+        del val_inputs
+        del train_inputs
+        gc.collect()
+
+
+        for i, m in enumerate(magn):
+            if s > 0:
+                xadv = scalers[variable].inverse_transform(all_inputs)
+                
+                integervars = [59,63,64,65,66]
+                if variable in integervars:
+                    xadv = np.rint(scalers[variable].inverse_transform(all_inputs))
+                    
+                xadv_new = np.concatenate((xmagn[i], xadv))
+                xmagn[i] = xadv_new
+            else:
+                xadv = scalers[variable].inverse_transform(all_inputs)
+                            
+                integervars = [59,63,64,65,66]
+                if variable in integervars:
+                    xadv = np.rint(scalers[variable].inverse_transform(all_inputs))
+                
+                xmagn.append(xadv)
+
+        del all_inputs
+        del xadv
+        gc.collect()
+
+    inputs = np.array(xmagn)
+    del xmagn
+    gc.collect()
+    return auc_ranking_parallel_inputs_ready(variable,inputs)
+
+
 if mode == 'raw':
     #test_inputs =  torch.load(test_input_file_paths[s]).to(device).float()
     #val_inputs =  torch.load(val_input_file_paths[s]).to(device).float()
@@ -296,7 +343,7 @@ if mode == 'raw':
     pool.close()  
     '''
     
-    outs = [auc_ranking_parallel(i) for i in range(start, end+1)]
+    outs = [do_raw(i) for i in range(start, end+1)]
     
     
     list_variables = [outs[i][0] for i in range(len(outs))]
@@ -344,9 +391,7 @@ def apply_noise(variable=0,magn=[param],offset=[0]):
             all_inputs_noise = all_inputs + noise
             if s > 0:
                 xadv = scalers[variable].inverse_transform(all_inputs_noise)
-                integervars = [59,63,64,65,66]
-                if variable in integervars:
-                    xadv = np.rint(scalers[variable].inverse_transform(all_inputs))
+                
 
                 '''
                 # as long as nothing was set to 0 manually, not really necessary
@@ -383,13 +428,14 @@ def apply_noise(variable=0,magn=[param],offset=[0]):
                         if np.sum(defaults) != 0:
                             xadv[defaults] = scalers[variable].inverse_transform(all_inputs.cpu())[defaults]
                             
+                integervars = [59,63,64,65,66]
+                if variable in integervars:
+                    xadv = np.rint(scalers[variable].inverse_transform(all_inputs))
+                    
                 xadv_new = np.concatenate((xmagn[i], xadv))
                 xmagn[i] = xadv_new
             else:
                 xadv = scalers[variable].inverse_transform(all_inputs_noise)
-                integervars = [59,63,64,65,66]
-                if variable in integervars:
-                    xadv = np.rint(scalers[variable].inverse_transform(all_inputs))
                 '''
                 # as long as nothing was set to 0 manually, not really necessary
                 vars_with_0_defaults = [6, 7, 8, 9, 10, 11]                 # trackDecayLenVal_0 to _5
@@ -424,6 +470,10 @@ def apply_noise(variable=0,magn=[param],offset=[0]):
                         defaults = abs(scalers[variable].inverse_transform(all_inputs.cpu()) + 1.0) < 0.001   # "floating point error" --> allow some error margin
                         if np.sum(defaults) != 0:
                             xadv[defaults] = scalers[variable].inverse_transform(all_inputs.cpu())[defaults]
+                            
+                integervars = [59,63,64,65,66]
+                if variable in integervars:
+                    xadv = np.rint(scalers[variable].inverse_transform(all_inputs))
                 
                 xmagn.append(xadv)
 
@@ -473,7 +523,7 @@ if mode == 'noise':
         
     df = pd.DataFrame(list(zip(list_variables, list_auc_bvl, list_auc_bvc)), columns =['input_name', 'auc_bvl', 'auc_bvc'])
     
-    if outdirname == 'df_auc_TT180':
+    if traindataset == 'tt':
         df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_noise/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
     else:
         df.to_pickle(f'/home/um106329/aisafety/new_march_21/df_auc_noise_QCD/df_auc_ranking_NFiles_{NUM_DATASETS}_MODE_{mode}_PARAM_{param}_PARALLELTEST_v2_{start}_to_{end}.pkl')
