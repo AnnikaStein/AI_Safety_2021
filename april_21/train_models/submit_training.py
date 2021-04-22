@@ -37,8 +37,8 @@ print('Output of Slurm Jobs will be placed in:\t',logPath)
 shPath = home + "/aisafety/april_21/train_models/"
 print('Shell script is located at:\t',shPath)
 
-time = 63
-mem = 160
+time = 11
+mem = 30
 
 factor_FILES = NUM_DATASETS / 49.0
 factor_EPOCHS = epochs / 30.0
@@ -52,7 +52,7 @@ else:
 
     
 submit_command = ("sbatch "
-        "--time={6}:00:00 "
+        "--time={6}:30:00 "
         "--mem-per-cpu={5}G "
         "--job-name=TTtr_{0}_{1}_{2}{3}_{4} "
         "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath)
