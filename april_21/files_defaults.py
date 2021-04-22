@@ -89,11 +89,13 @@ for k in range(NUM_DATASETS):
         n_defaults[i][1] += len(in1[:,i][in1[:,i] == defaults[i]])
         n_defaults[i][2] += len(in2[:,i][in2[:,i] == defaults[i]])
         n_defaults[i][3] += len(in3[:,i][in3[:,i] == defaults[i]])
-        n_defaults[i][4] += n_defaults[i][0] + n_defaults[i][1] + n_defaults[i][2] + n_defaults[i][3]
-
+        
+for i in range(67):
+    n_defaults[i][4] = np.sum(n_defaults[i][0:4])
 n_total[4] = np.sum(n_total[0:4])    
 
-
+#print(n_defaults)
+#print(n_total)
 percentages = np.transpose(n_defaults / n_total)
 #print(percentages)
 #print(n_total)
