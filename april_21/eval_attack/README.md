@@ -1,5 +1,5 @@
 # Evaluation
-#### Performance of the model, information about the sampels and attacks
+#### Performance of the model, information about the samples and attacks
 
 ## Raw performance
 
