@@ -27,8 +27,12 @@ Limits of the axes are scaled automatically, taking every sample / overlay into 
 
 The script also generates the confusion matrices that compare predicted and true labels and stores them as `.npy`-files, which can be read later. (#ToDo)
 ### 6. ROC-curves (single epoch & DeepCSV or per epoch)
+```shell
+python3 ~/aisafety/april_21/eval_attack/submit_eval_roc.py -f 49 -p 120 -w '_new' -d '0.001' -c 'no'
+```
+... will create ROC curves for the new weighting method alone (loss weighting), at epoch 120, if the training was done with 49 files that have the default / minima shifted by 0.001. There will be four ROC curves (one for each flavour - against everything) and additionally also B vs UDSG. This does in total save five `.png` files, where the custom tagger and DeepCSV are displayed. (Same goes for `'_as_is'`, but with no weighting applied.) If instead one wants a plot of all four categories at the same time, with DeepCSV and both weighting methods combined (plus B vs UDSG), use `'_both'`. For B vs UDSG, the definition is P(b) + P(bb).
 
-
+If you instead specify `'yes'`, the script will run on five different epochs (the last five epochs in steps of 25 ascending to the current epoch, e.g. up to 120, going from 20, to 45, 70, 95 and finally 120.) Could be modified in `eval_roc.py` to use other epochs instead. (Maybe add log-scale for future.)
 ### 7. AUC (per epoch)
 
 ## Attacks
