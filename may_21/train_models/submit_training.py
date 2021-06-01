@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="Setup for training")
 parser.add_argument('-f',"--files", type=int, help="Number of files for training", default=278)
 parser.add_argument('-p',"--prevep", type=int, help="Number of previously trained epochs", default=0)
 parser.add_argument('-a',"--addep", type=int, help="Number of additional epochs for this training", default=30)
-parser.add_argument('-w',"--wm", help="Weighting method", default="_ptetaflav")
+parser.add_argument('-w',"--wm", help="Weighting method", default="_ptetaflavloss")
 parser.add_argument('-d',"--default", type=float, help="Default value", default='0.001')  # new, based on Nik's work
 parser.add_argument('-j',"--jets", type=int, help="Number of jets, if one does not want to use all jets for training, if all jets shall be used, type -1", default=-1)
 parser.add_argument('-m',"--dominimal", help="Only do training with minimal setup, i.e. 15 QCD, 5 TT files", default='no')
@@ -41,7 +41,7 @@ print('Output of Slurm Jobs will be placed in:\t',logPath)
 shPath = home + "/aisafety/may_21/train_models/"
 print('Shell script is located at:\t',shPath)
 
-time = 45
+time = 69.5
 mem = 182
 
 factor_FILES = NUM_DATASETS / 278.0

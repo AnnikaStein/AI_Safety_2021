@@ -27,6 +27,7 @@ import argparse
 import os
 
 from jet_reweighting import FlavEtaPtSampler
+#from jet_reweighting import FlavEtaPtDataLoader
 
 #plt.style.use(hep.cms.style.ROOT)
 
@@ -68,7 +69,8 @@ do_minimal = args.dominimal
 '''
     Available weighting methods:
         '_noweighting' :  apply no weighting factors at all (will converge to a nice result performance-wise, but the discriminator shapes are basically just two bins (0 or 1, almost nothing in between))
-        '_ptetaflav' : should be uniform in flavour, and reweighted in pt & eta such that shapes per flavour are equal (absolute)
+        '_ptetaflavsampler' : should be uniform in flavour, and reweighted in pt & eta such that shapes per flavour are equal (absolute) -- uses over- and undersampling
+        '_ptetaflavloss' : should be uniform in flavour, and reweighted in pt & eta such that shapes per flavour are equal (absolute) -- uses sample weights that will be multiplied with the loss
 '''
 
 print(f'weighting method: {weighting_method}')   
@@ -122,9 +124,13 @@ with open(f"/home/um106329/aisafety/may_21/train_models/status_logfiles/logfile{
 if do_minimal == 'no':
     train_input_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_inputs_%d_with_default_{default}.pt' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/train_inputs_%d_with_default_{default}.pt' % k for k in range(0,max(NUM_DATASETS-229,0))]
     train_target_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_targets_%d_with_default_{default}.pt' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/train_targets_%d_with_default_{default}.pt' % k for k in range(0,max(NUM_DATASETS-229,0))]
-    train_bins_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/train_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,max(NUM_DATASETS-229,0))]
     val_input_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/val_inputs_%d_with_default_{default}.pt' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/val_inputs_%d_with_default_{default}.pt' % k for k in range(0,max(NUM_DATASETS-229,0))]
-    val_target_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/val_targets_%d_with_default_{default}.pt' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/val_targets_%d_with_default_{default}.pt' % k for k in range(0,max(NUM_DATASETS-229,0))]    
+    val_target_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/val_targets_%d_with_default_{default}.pt' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/val_targets_%d_with_default_{default}.pt' % k for k in range(0,max(NUM_DATASETS-229,0))]
+    
+    if weighting_method == '_ptetaflavloss':
+        train_sample_weights_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_sample_weights_%d_with_default_{default}.npy' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/train_sample_weights_%d_with_default_{default}.npy' % k for k in range(0,max(NUM_DATASETS-229,0))]
+    elif weighting_method == '_ptetaflavsampler':
+        train_bins_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/train_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,max(NUM_DATASETS-229,0))]
 #val_bins_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/val_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/may_21/scaled_TT/val_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,max(NUM_DATASETS-229,0))]
 # after the paths have been defined, no need to keep track of qcd and tt paths anymore
 
@@ -137,16 +143,23 @@ if do_minimal == 'no':
 if do_minimal == 'yes':
     train_input_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_inputs_%d_with_default_{default}.pt' % k for k in range(0,15)] + [f'/hpcwork/um106329/may_21/scaled_TT/train_inputs_%d_with_default_{default}.pt' % k for k in range(0,5)]
     train_target_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_targets_%d_with_default_{default}.pt' % k for k in range(0,15)] + [f'/hpcwork/um106329/may_21/scaled_TT/train_targets_%d_with_default_{default}.pt' % k for k in range(0,5)]
-    train_bins_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,15)] + [f'/hpcwork/um106329/may_21/scaled_TT/train_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,5)]
     val_input_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/val_inputs_%d_with_default_{default}.pt' % k for k in range(0,15)] + [f'/hpcwork/um106329/may_21/scaled_TT/val_inputs_%d_with_default_{default}.pt' % k for k in range(0,5)]
     val_target_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/val_targets_%d_with_default_{default}.pt' % k for k in range(0,15)] + [f'/hpcwork/um106329/may_21/scaled_TT/val_targets_%d_with_default_{default}.pt' % k for k in range(0,5)] 
-
+    
+    if weighting_method == '_ptetaflavloss':
+        train_sample_weights_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_sample_weights_%d_with_default_{default}.npy' % k for k in range(0,15)] + [f'/hpcwork/um106329/may_21/scaled_TT/train_sample_weights_%d_with_default_{default}.npy' % k for k in range(0,5)]
+    elif weighting_method == '_ptetaflavsampler':
+        train_bins_file_paths = [f'/hpcwork/um106329/may_21/scaled_QCD/train_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,15)] + [f'/hpcwork/um106329/may_21/scaled_TT/train_pt_eta_bins_%d_with_default_{default}.npy' % k for k in range(0,5)]
 
 ##### LOAD TRAINING SAMPLES #####
 
 pre = time.time()
-
-allin = ConcatDataset([TensorDataset(torch.load(train_input_file_paths[f]), torch.load(train_target_file_paths[f])) for f in range(NUM_DATASETS)])
+if weighting_method == '_ptetaflavloss':
+    # if the loss shall be multiplied with sample weights after the calculation, one needs to add these as an additional column to the dataset inputs (otherwise the indices would not match up when using the dataloader)
+    # adapted from https://stackoverflow.com/a/66375624/14558181
+    allin = ConcatDataset([TensorDataset(torch.cat((torch.load(train_input_file_paths[f]), torch.from_numpy(np.load(train_sample_weights_file_paths[f])).to(torch.float16).unsqueeze(1)), dim=1) , torch.load(train_target_file_paths[f])) for f in range(NUM_DATASETS)])
+else:
+    allin = ConcatDataset([TensorDataset(torch.load(train_input_file_paths[f]), torch.load(train_target_file_paths[f])) for f in range(NUM_DATASETS)])
 #allin = TensorDataset(train_inputs, train_targets)
 
 
@@ -170,8 +183,9 @@ print(f"Time to load val: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)}
 
 ##### LOAD TRAIN & VAL BINS #####
 
-train_bins = np.hstack([np.load(train_bin_path) for train_bin_path in train_bins_file_paths])
-#val_bins = np.hstack([np.load(val_bin_path) for val_bin_path in val_bins_file_paths])
+if weighting_method == '_ptetaflavsampler':
+    train_bins = np.hstack([np.load(train_bin_path) for train_bin_path in train_bins_file_paths])
+    #val_bins = np.hstack([np.load(val_bin_path) for val_bin_path in val_bins_file_paths])
 
 
 pre = time.time()
@@ -211,11 +225,15 @@ else:
     print(f"Time to create valloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
 '''
 draw_n = None if n_samples == -1 else n_samples
-if weighting_method == '_ptetaflav':
+if weighting_method == '_ptetaflavsampler':
     alltargets = torch.cat([torch.load(t) for t in train_target_file_paths])
     trainloader = DataLoader(allin, batch_size=bsize, sampler=FlavEtaPtSampler(alltargets,train_bins,num_samples=draw_n),num_workers=0, pin_memory=False)
     post = time.time()
     print(f"Time to create trainloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
+#if weighting_method == '_ptetaflavloss':
+#    trainloader = DataLoader(allin, batch_size=bsize, shuffle=True, num_workers=0, pin_memory=False)
+#    post = time.time()
+#    print(f"Time to create trainloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
 else:
     trainloader = DataLoader(allin, batch_size=bsize, shuffle=True, num_workers=0, pin_memory=False)
     post = time.time()
@@ -293,8 +311,13 @@ elif weighting_method == '_new':
 else:
     criterion = nn.CrossEntropyLoss()
 '''    
-# with the new weighting, loss weighting is not necessary anymore (the imbalanced classes are already handled with weights for the cusotm sampler)
-criterion = nn.CrossEntropyLoss()
+
+if weighting_method == '_ptetaflavloss':
+    # loss weighting happens after loss for each sample has been calculated (see later in main train loop), will multiply with sample weights and only afterwards calculate the mean, therefore reduction has to be set to 'none' (performs no dim. red. and gives tensor of length n_batch)
+    criterion = nn.CrossEntropyLoss(reduction='none')
+else:
+    # with this weighting, loss weighting is not necessary anymore (the imbalanced classes are already handled with weights for the cusotm sampler)
+    criterion = nn.CrossEntropyLoss()
     
 optimizer = torch.optim.Adam(model.parameters(), lr=lrate)
 
@@ -345,6 +368,9 @@ for e in range(epochs):
     running_loss = 0
     model.train()
     for b, (i,j) in enumerate(trainloader):
+        if weighting_method == '_ptetaflavloss':
+            sample_weights = i[:, -1].to(device, non_blocking=True)
+            i = i[:, :-1]
         if e == 0 and b == 1:
             tb1 = time.time()
             print('first batch done')
@@ -357,11 +383,16 @@ for e in range(epochs):
         j = j.to(device, non_blocking=True)
         optimizer.zero_grad()
         output = model(i.float())
-        loss = criterion(output, j)
+        loss = criterion(output, j)         
         del i
         del j
         gc.collect()
-        loss.backward()
+        if weighting_method == '_ptetaflavloss':
+            # https://discuss.pytorch.org/t/per-class-and-per-sample-weighting/25530/4
+            loss = (loss * sample_weights / sample_weights.sum()).sum()
+            loss.mean().backward()
+        else:
+            loss.backward()
         optimizer.step()
         loss = loss.item()
         running_loss += loss
@@ -392,7 +423,10 @@ for e in range(epochs):
                 del i
                 del j
                 gc.collect()
-                vloss = vloss.item()
+                if weighting_method == '_ptetaflavloss':
+                    vloss = vloss.mean().item()
+                else:
+                    vloss = vloss.item()
                 running_val_loss += vloss
             '''
             # Old method to calc validation loss
