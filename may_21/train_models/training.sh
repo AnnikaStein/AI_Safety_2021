@@ -24,7 +24,7 @@
 
 #SBATCH --mail-user=annika.stein@rwth-aachen.de
 
-cd /home/um106329/aisafety/april_21/train_models
+cd /home/um106329/aisafety/may_21/train_models
 module unload intelmpi; module switch intel gcc
 module load cuda/110
 module load cudnn

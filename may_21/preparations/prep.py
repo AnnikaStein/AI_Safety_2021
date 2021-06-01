@@ -26,6 +26,12 @@ if int(default) == default:
 minima = np.load('/home/um106329/aisafety/april_21/from_Nik/default_value_studies_minima.npy')
 defaults = minima - default
 
+b_weights = np.load('/home/um106329/aisafety/may_21/absweights_b.npy')
+bb_weights = np.load('/home/um106329/aisafety/may_21/absweights_bb.npy')
+c_weights = np.load('/home/um106329/aisafety/may_21/absweights_c.npy')
+l_weights = np.load('/home/um106329/aisafety/may_21/absweights_l.npy')
+
+flavour_lookuptables = np.array([b_weights,bb_weights,c_weights,l_weights])
 
 if sample=='TT':
 
@@ -72,33 +78,71 @@ else:
 def preprocess(dataset, DeepCSV_dataset, s):    
     
     trainingset,testset,_,DeepCSV_testset = train_test_split(dataset, DeepCSV_dataset, test_size=0.2, random_state=1)
+    torch.save(DeepCSV_testset, f'/hpcwork/um106329/may_21/scaled_{sample}/DeepCSV_testset_%d_with_default_{default}.pt' % s)
+    del DeepCSV_testset
     trainset, valset = train_test_split(trainingset,test_size=0.1, random_state=1)
-    
+    del trainingset
+    gc.collect()
     # get the indices of the binned 2d histogram (eta, pt) for each jet
     # these arrays will have the shape (2,len(data)) where len(data) is the length of the testset, valset and trainset
     # to not waste too much memory & diskspace later, one only needs 8-bit unsigned integer (each going from 0 to 255, which is enough for 50 bins in each direction,
     # so only 50 possible values --> use np.ubyte directly, also one only needs to unpack the fourth return value from binned_statistic_2d, we don't need the histogram
     # or the bin edges, just the indices that will serve as a kind of look-up-table during the sampling for the training)
-    # first sub-array are the indices for eta, second one for pt (notice: this is really a nested array because expand_binnumbers was set to true, otherwise it would have been flat)
+    # first sub-array are the indices for eta, second one for pt (notice: this is really a nested array because expand_binnumbers was set to true, otherwise it would have been flat)                                                
+    test_targets = (torch.Tensor(testset[:,-1])).long()      
     _,_,_,test_pt_eta_bins = binned_statistic_2d(testset[:,0],testset[:,1],None,'count',bins=(50,50),range=((-2.5,2.5),(20,1000)),expand_binnumbers=True)
+    test_eta_bins = test_pt_eta_bins[0]-1
+    test_pt_bins = test_pt_eta_bins[1]-1
+    test_all_weights = flavour_lookuptables[test_targets,test_eta_bins,test_pt_bins]
+    test_weights = test_all_weights/sum(test_all_weights)
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/test_pt_eta_bins_%d_with_default_{default}.npy' % s,test_pt_eta_bins.astype(np.ubyte))
+    np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/test_sample_weights_%d_with_default_{default}.npy' % s,test_weights)
     del test_pt_eta_bins
+    del test_eta_bins
+    del test_pt_bins
+    del test_all_weights
+    del test_weights
+    gc.collect()
+    
+    val_targets = (torch.Tensor(valset[:,-1])).long()
     _,_,_,val_pt_eta_bins = binned_statistic_2d(valset[:,0],valset[:,1],None,'count',bins=(50,50),range=((-2.5,2.5),(20,1000)),expand_binnumbers=True)
+    val_eta_bins = val_pt_eta_bins[0]-1
+    val_pt_bins = val_pt_eta_bins[1]-1
+    val_all_weights = flavour_lookuptables[val_targets,val_eta_bins,val_pt_bins]
+    val_weights = val_all_weights/sum(val_all_weights)
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/val_pt_eta_bins_%d_with_default_{default}.npy' % s,val_pt_eta_bins.astype(np.ubyte))
+    np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/val_sample_weights_%d_with_default_{default}.npy' % s,val_weights)
     del val_pt_eta_bins
+    del val_eta_bins
+    del val_pt_bins
+    del val_all_weights
+    del val_weights
+    gc.collect()
+    
+    train_targets = (torch.Tensor(trainset[:,-1])).long()
     _,_,_,train_pt_eta_bins = binned_statistic_2d(trainset[:,0],trainset[:,1],None,'count',bins=(50,50),range=((-2.5,2.5),(20,1000)),expand_binnumbers=True)
+    train_eta_bins = train_pt_eta_bins[0]-1
+    train_pt_bins = train_pt_eta_bins[1]-1
+    train_all_weights = flavour_lookuptables[train_targets,train_eta_bins,train_pt_bins]
+    train_weights = train_all_weights/sum(train_all_weights)
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/train_pt_eta_bins_%d_with_default_{default}.npy' % s,train_pt_eta_bins.astype(np.ubyte))
+    np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/train_sample_weights_%d_with_default_{default}.npy' % s,train_weights)
     del train_pt_eta_bins
+    del train_eta_bins
+    del train_pt_bins
+    del train_all_weights
+    del train_weights
+    gc.collect()
     # the indices have been retrieved before the scaling happened (because afterwards, the values will be different and not be placed in the bins defined during the calculation
     # of the weights)
     
     
     test_inputs = torch.Tensor(testset[:,0:67])                                                
-    test_targets = (torch.Tensor(testset[:,-1])).long()        
+    #test_targets = (torch.Tensor(testset[:,-1])).long()        
     val_inputs = torch.Tensor(valset[:,0:67])
-    val_targets = (torch.Tensor(valset[:,-1])).long()
+    #val_targets = (torch.Tensor(valset[:,-1])).long()
     train_inputs = torch.Tensor(trainset[:,0:67])
-    train_targets = (torch.Tensor(trainset[:,-1])).long()
+    #train_targets = (torch.Tensor(trainset[:,-1])).long()
     
     norm_train_inputs,norm_val_inputs,norm_test_inputs = train_inputs.clone().detach(),val_inputs.clone().detach(),test_inputs.clone().detach()
     scalers = []
@@ -124,26 +168,21 @@ def preprocess(dataset, DeepCSV_dataset, s):
     val_inputs = norm_val_inputs.clone().detach().to(torch.float16)
     test_inputs = norm_test_inputs.clone().detach().to(torch.float16)
     
-        
-    # TT to Semileptonic
+    
     torch.save(train_inputs, f'/hpcwork/um106329/may_21/scaled_{sample}/train_inputs_%d_with_default_{default}.pt' % s)
     torch.save(val_inputs, f'/hpcwork/um106329/may_21/scaled_{sample}/val_inputs_%d_with_default_{default}.pt' % s)
     torch.save(test_inputs, f'/hpcwork/um106329/may_21/scaled_{sample}/test_inputs_%d_with_default_{default}.pt' % s)
-    torch.save(DeepCSV_testset, f'/hpcwork/um106329/may_21/scaled_{sample}/DeepCSV_testset_%d_with_default_{default}.pt' % s)
     torch.save(train_targets, f'/hpcwork/um106329/may_21/scaled_{sample}/train_targets_%d_with_default_{default}.pt' % s)
     torch.save(val_targets, f'/hpcwork/um106329/may_21/scaled_{sample}/val_targets_%d_with_default_{default}.pt' % s)
     torch.save(test_targets, f'/hpcwork/um106329/may_21/scaled_{sample}/test_targets_%d_with_default_{default}.pt' % s)
     torch.save(scalers, f'/hpcwork/um106329/may_21/scaled_{sample}/scalers_%d_with_default_{default}.pt' % s)
     
-    
     del train_inputs
     del val_inputs
     del test_inputs
     del trainset
-    del trainingset
     del testset
     del valset
-    del DeepCSV_testset
     del train_targets
     del val_targets
     del test_targets
