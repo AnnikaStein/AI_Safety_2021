@@ -24,16 +24,22 @@ import gc
 import argparse
 #import ast
 
-import os
+import os, sys
 
 from jet_reweighting import FlavEtaPtSampler
 #from jet_reweighting import FlavEtaPtDataLoader
+
+from fast_tensor_data_loader import FastTensorDataLoader
 
 #plt.style.use(hep.cms.style.ROOT)
 
 # depending on what's available, or force cpu
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #device = torch.device('cpu')
+
+if device == torch.device("cuda:0"):
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.enabled = True
 
 #C = ['firebrick', 'darkgreen', 'darkblue', 'grey', 'cyan','magenta']
 #colorcode = ['firebrick','magenta','cyan','darkgreen']
@@ -51,6 +57,7 @@ parser.add_argument("wm", help="Weighting method")
 parser.add_argument("default", type=float, help="Default value")  # new, based on Nik's work
 parser.add_argument("jets", type=int, help="Number of jets, if one does not want to use all jets for training, if all jets shall be used, type -1")
 parser.add_argument("dominimal", help="Only do training with minimal setup, i.e. 15 QCD, 5 TT files")
+parser.add_argument("dofastdl", help="Use fast DataLoader")
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -65,6 +72,7 @@ if default == int(default):
 #defaults = -999*np.ones(100)
 n_samples = args.jets
 do_minimal = args.dominimal
+do_fastdataloader = args.dofastdl
 
 '''
     Available weighting methods:
@@ -157,9 +165,22 @@ pre = time.time()
 if weighting_method == '_ptetaflavloss':
     # if the loss shall be multiplied with sample weights after the calculation, one needs to add these as an additional column to the dataset inputs (otherwise the indices would not match up when using the dataloader)
     # adapted from https://stackoverflow.com/a/66375624/14558181
-    allin = ConcatDataset([TensorDataset(torch.cat((torch.load(train_input_file_paths[f]), torch.from_numpy(np.load(train_sample_weights_file_paths[f])).to(torch.float16).unsqueeze(1)), dim=1) , torch.load(train_target_file_paths[f])) for f in range(NUM_DATASETS)])
+    if do_fastdataloader == 'no':
+        allin = ConcatDataset([TensorDataset(torch.cat((torch.load(train_input_file_paths[f]), torch.from_numpy(np.load(train_sample_weights_file_paths[f])).to(torch.float16).unsqueeze(1)), dim=1) , torch.load(train_target_file_paths[f])) for f in range(NUM_DATASETS)])
+    else:
+        global train_inputs
+        global train_targets
+        train_inputs = torch.cat([torch.cat((torch.load(train_input_file_paths[f]), torch.from_numpy(np.load(train_sample_weights_file_paths[f])).to(torch.float16).unsqueeze(1)), dim=1) for f in range(NUM_DATASETS)])
+        train_targets = torch.cat([torch.load(path) for path in train_target_file_paths])
+        
 else:
-    allin = ConcatDataset([TensorDataset(torch.load(train_input_file_paths[f]), torch.load(train_target_file_paths[f])) for f in range(NUM_DATASETS)])
+    if do_fastdataloader == 'no':
+        allin = ConcatDataset([TensorDataset(torch.load(train_input_file_paths[f]), torch.load(train_target_file_paths[f])) for f in range(NUM_DATASETS)])
+    else:
+        #global train_inputs
+        #global train_targets
+        train_inputs = torch.cat([torch.load(path) for path in train_input_file_paths])
+        train_targets = torch.cat([torch.load(path) for path in train_target_file_paths])
 #allin = TensorDataset(train_inputs, train_targets)
 
 
@@ -168,18 +189,23 @@ post = time.time()
 print(f"Time to load train: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
 
 
-
+'''
 ##### LOAD VAL SAMPLES #####
 
 pre = time.time()
-
-allval = ConcatDataset([TensorDataset(torch.load(val_input_file_paths[f]), torch.load(val_target_file_paths[f])) for f in range(NUM_DATASETS)])
+if do_fastdataloader == 'no':
+    allval = ConcatDataset([TensorDataset(torch.load(val_input_file_paths[f]), torch.load(val_target_file_paths[f])) for f in range(NUM_DATASETS)])
+else:
+    #global val_inputs
+    #global val_targets
+    val_inputs = torch.cat([torch.load(path) for path in val_input_file_paths])
+    val_targets = torch.cat([torch.load(path) for path in val_target_file_paths])
 #allval = TensorDataset(val_inputs, val_targets)
 
 
 post = time.time()
 print(f"Time to load val: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
-
+'''
 
 ##### LOAD TRAIN & VAL BINS #####
 
@@ -228,33 +254,47 @@ draw_n = None if n_samples == -1 else n_samples
 if weighting_method == '_ptetaflavsampler':
     alltargets = torch.cat([torch.load(t) for t in train_target_file_paths])
     trainloader = DataLoader(allin, batch_size=bsize, sampler=FlavEtaPtSampler(alltargets,train_bins,num_samples=draw_n),num_workers=0, pin_memory=False)
-    post = time.time()
-    print(f"Time to create trainloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
+    total_n_train = len(trainloader.dataset)
 #if weighting_method == '_ptetaflavloss':
 #    trainloader = DataLoader(allin, batch_size=bsize, shuffle=True, num_workers=0, pin_memory=False)
 #    post = time.time()
 #    print(f"Time to create trainloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
 else:
-    trainloader = DataLoader(allin, batch_size=bsize, shuffle=True, num_workers=0, pin_memory=False)
-    post = time.time()
-    print(f"Time to create trainloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
-    
-valloader = DataLoader(allval, batch_size=bsize, shuffle=False, num_workers=0, pin_memory=False)
+    if do_fastdataloader == 'no':
+        trainloader = DataLoader(allin, batch_size=bsize, shuffle=True, num_workers=0, pin_memory=False)
+        total_n_train = len(trainloader.dataset)
+    else:
+        total_n_train = len(train_targets)
+        trainloader = FastTensorDataLoader(train_inputs, train_targets, batch_size=bsize, shuffle=True, n_data=total_n_train)
+        del train_inputs
+        del train_targets
+        gc.collect()
+post = time.time()
+print(f"Time to create trainloader: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
+
+'''
+if do_fastdataloader == 'no':
+    valloader = DataLoader(allval, batch_size=bsize, shuffle=False, num_workers=0, pin_memory=False)
+    total_n_val = len(valloader.dataset)
+else:
+    total_n_val = len(val_targets)
+    valloader = FastTensorDataLoader(val_inputs, val_targets, batch_size=bsize, shuffle=False, n_data=total_n_val)
 postval = time.time()
 print(f"Time to create valloader: {np.floor((postval-post)/60)} min {np.ceil((postval-post)%60)} s")
-
+'''
 
 total_len_train = len(trainloader)
-total_n_train = len(trainloader.dataset)
-print(total_n_train,'\ttraining samples')
+print(total_n_train,'\ttraining samples', '\ttotal_len_train', total_len_train)
 
 
-
+'''
 total_len_val = len(valloader)
-total_n_val = len(valloader.dataset)
-print(total_n_val,'\tvalidation samples')
+print(total_n_val,'\tvalidation samples', '\ttotal_len_val', total_len_val)
+'''
 
 
+# for debugging data loading
+#sys.exit()
 
 model = nn.Sequential(nn.Linear(67, 100),
                       nn.ReLU(),
@@ -368,9 +408,9 @@ for e in range(epochs):
     running_loss = 0
     model.train()
     for b, (i,j) in enumerate(trainloader):
-        if weighting_method == '_ptetaflavloss':
-            sample_weights = i[:, -1].to(device, non_blocking=True)
-            i = i[:, :-1]
+        #if e == 0 and b == 0:
+            #del train_inputs
+            #del train_targets
         if e == 0 and b == 1:
             tb1 = time.time()
             print('first batch done')
@@ -378,10 +418,23 @@ for e in range(epochs):
             
             with open(f"/home/um106329/aisafety/may_21/train_models/status_logfiles/logfile{weighting_method}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
                 log.write(f"{np.floor((tb1-start)/60)} min {np.ceil((tb1-start)%60)} s"+' First batch done!\n')
+        
+        if weighting_method == '_ptetaflavloss':
+            sample_weights = i[:, -1].to(device, non_blocking=True)
+            i = i[:, :-1].to(device, non_blocking=True)
+        else: 
+            i = i.to(device, non_blocking=True)
             
-        i = i.to(device, non_blocking=True)
         j = j.to(device, non_blocking=True)
+        
+        
         optimizer.zero_grad()
+        '''
+        if do_fastdataloader == 'yes':
+            output = model(i)
+        else:
+            output = model(i.float()) # can be omitted if the FastTensorDataLoader is used in the newer version with index_select (because it only works with float in the first place)
+        '''
         output = model(i.float())
         loss = criterion(output, j)         
         del i
@@ -404,9 +457,43 @@ for e in range(epochs):
         if e == 0:
             tep1 = time.time()
             print('first training epoch done, now starting first evaluation')
-            
+             
             with open(f"/home/um106329/aisafety/may_21/train_models/status_logfiles/logfile{weighting_method}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
                 log.write(f"{np.floor((tep1-start)/60)} min {np.ceil((tep1-start)%60)} s"+' First training epoch done! Start first evaluation.\n')
+            
+            
+            
+            ##### LOAD VAL SAMPLES #####
+
+            pre = time.time()
+            if do_fastdataloader == 'no':
+                allval = ConcatDataset([TensorDataset(torch.load(val_input_file_paths[f]), torch.load(val_target_file_paths[f])) for f in range(NUM_DATASETS)])
+            else:
+                #global val_inputs
+                #global val_targets
+                val_inputs = torch.cat([torch.load(path) for path in val_input_file_paths])
+                val_targets = torch.cat([torch.load(path) for path in val_target_file_paths])
+            #allval = TensorDataset(val_inputs, val_targets)
+
+
+            post = time.time()
+            print(f"Time to load val: {np.floor((post-pre)/60)} min {np.ceil((post-pre)%60)} s")
+            
+            if do_fastdataloader == 'no':
+                valloader = DataLoader(allval, batch_size=bsize, shuffle=False, num_workers=0, pin_memory=False)
+                total_n_val = len(valloader.dataset)
+            else:
+                total_n_val = len(val_targets)
+                valloader = FastTensorDataLoader(val_inputs, val_targets, batch_size=bsize, shuffle=False, n_data=total_n_val)
+                del val_inputs
+                del val_targets
+                gc.collect()
+            postval = time.time()
+            print(f"Time to create valloader: {np.floor((postval-post)/60)} min {np.ceil((postval-post)%60)} s")
+            
+            total_len_val = len(valloader)
+            print(total_n_val,'\tvalidation samples', '\ttotal_len_val', total_len_val)
+           
             
         with torch.no_grad():
             model.eval()
@@ -418,6 +505,13 @@ for e in range(epochs):
             for i,j in valloader:
                 i = i.to(device, non_blocking=True)
                 j = j.to(device, non_blocking=True)
+                # stupid, take float only as last step (otherwise: memory problems)
+                '''
+                if do_fastdataloader == 'yes':
+                    val_output = model(i)
+                else:
+                    val_output = model(i.float())
+                '''
                 val_output = model(i.float())
                 vloss = criterion(val_output, j)
                 del i

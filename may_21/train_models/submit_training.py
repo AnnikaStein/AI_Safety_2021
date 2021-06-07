@@ -20,6 +20,7 @@ parser.add_argument('-w',"--wm", help="Weighting method", default="_ptetaflavlos
 parser.add_argument('-d',"--default", type=float, help="Default value", default='0.001')  # new, based on Nik's work
 parser.add_argument('-j',"--jets", type=int, help="Number of jets, if one does not want to use all jets for training, if all jets shall be used, type -1", default=-1)
 parser.add_argument('-m',"--dominimal", help="Only do training with minimal setup, i.e. 15 QCD, 5 TT files", default='no')
+parser.add_argument('-l',"--dofastdl", help="Use fast DataLoader", default='yes')
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -31,6 +32,7 @@ if default == int(default):
     default = int(default)
 n_samples = args.jets
 do_minimal = args.dominimal
+do_fastdataloader = args.dofastdl
     
     
 home = os.path.expanduser('~')
@@ -41,25 +43,33 @@ print('Output of Slurm Jobs will be placed in:\t',logPath)
 shPath = home + "/aisafety/may_21/train_models/"
 print('Shell script is located at:\t',shPath)
 
-time = 69.5
-mem = 182
+if NUM_DATASETS == 20:
+    time = 4
+    mem = 16
+else:
+    time = 9
+    mem = 182
+    factor_FILES = NUM_DATASETS / 278.0
 
-factor_FILES = NUM_DATASETS / 278.0
-factor_EPOCHS = epochs / 10.0
+factor_EPOCHS = epochs / 40.0
 
-if NUM_DATASETS < 278:
+if NUM_DATASETS == 20:
+    time = int(np.rint(time * factor_EPOCHS) + 0.5)
+    
+elif NUM_DATASETS == 278:
+    time = int(np.rint(time * factor_EPOCHS) + 0.5)
+
+else:
     time = int(np.rint(time * factor_FILES * factor_EPOCHS) + 2)
 
     mem = min(int(np.rint(mem * factor_FILES) + 24),182)
-else:
-    time = int(np.rint(time * factor_EPOCHS) + 2)
 
     
 submit_command = ("sbatch "
-        "--time={6}:30:00 "
+        "--time={6}:00:00 "
         "--mem-per-cpu={5}G "
-        "--job-name=tr_{0}_{1}_{2}{3}_{4}_{8}_{9} "
-        "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4},NJETS={8},DOMINIMAL={9} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath, n_samples, do_minimal)
+        "--job-name=tr_{0}_{1}_{2}{3}_{4}_{8}_{9}_{10} "
+        "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4},NJETS={8},DOMINIMAL={9},FASTDATALOADER={10} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath, n_samples, do_minimal, do_fastdataloader)
 
 print(submit_command)
 userinput = input("Submit job? (y/n) ").lower() == 'y'
