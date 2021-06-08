@@ -101,6 +101,7 @@ jetFlavour = test_targets+1
 
 do_noweighting   = True if ( weighting_method == '_compare' or weighting_method == '_noweighting'   ) else False
 do_ptetaflavloss = True if ( weighting_method == '_compare' or weighting_method == '_ptetaflavloss' ) else False
+do_flatptetaflavloss = True if ( weighting_method == '_compare' or weighting_method == '_flatptetaflavloss' ) else False
 
 
 
@@ -284,7 +285,65 @@ if do_ptetaflavloss:
     with open(f'/home/um106329/aisafety/may_21/evaluate/confusion_matrices/weighting_method_ptetaflavloss_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
         np.save(f, cfm)
 
+'''
 
+    Predictions: With new weighting method FLAT
+    
+'''
+if do_flatptetaflavloss:
+    model = nn.Sequential(nn.Linear(67, 100),
+                          nn.ReLU(),
+                          nn.Dropout(0.1),
+                          nn.Linear(100, 100),
+                          nn.ReLU(),
+                          nn.Dropout(0.1),
+                          nn.Linear(100, 100),
+                          nn.ReLU(),
+                          nn.Dropout(0.1),
+                          nn.Linear(100, 100),
+                          nn.ReLU(),
+                          nn.Dropout(0.1),
+                          nn.Linear(100, 100),
+                          nn.ReLU(),
+                          nn.Linear(100, 4),
+                          nn.Softmax(dim=1))
+
+
+
+    checkpoint = torch.load(f'/hpcwork/um106329/may_21/saved_models/_flatptetaflavloss_{NUM_DATASETS}_{default}_{n_samples}/model_{at_epoch}_epochs_v10_GPU_weighted_flatptetaflavloss_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
+    model.load_state_dict(checkpoint["model_state_dict"])
+
+    model.to(device)
+
+    #evaluate network on inputs
+    model.eval()
+    predictions_new_flat = model(test_inputs).detach().numpy()
+    '''
+    print(np.unique(predictions_new_flat))
+    predictions_new_flat[:,0][predictions_new_flat[:,0] > 1.] = 0.999999
+    predictions_new_flat[:,1][predictions_new_flat[:,1] > 1.] = 0.999999
+    predictions_new_flat[:,2][predictions_new_flat[:,2] > 1.] = 0.999999
+    predictions_new_flat[:,3][predictions_new_flat[:,3] > 1.] = 0.999999
+    predictions_new_flat[:,0][predictions_new_flat[:,0] < 0.] = 0.000001
+    predictions_new_flat[:,1][predictions_new_flat[:,1] < 0.] = 0.000001
+    predictions_new_flat[:,2][predictions_new_flat[:,2] < 0.] = 0.000001
+    predictions_new_flat[:,3][predictions_new_flat[:,3] < 0.] = 0.000001
+    print(np.unique(predictions_new_flat))
+    '''
+
+    print('predictions with loss weighting done')
+
+
+    #sys.exit()
+
+
+    mostprob = np.argmax(predictions_new_flat, axis=-1)
+    cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
+    print(cfm)
+    with open(f'/home/um106329/aisafety/may_21/evaluate/confusion_matrices/weighting_method_flatptetaflavloss_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
+        np.save(f, cfm)
+        
+        
 def sum_hist():
     plt.ioff()    
     classifierHist = hist.Hist("Jets",
@@ -313,6 +372,11 @@ def sum_hist():
         classifierHist.fill(sample="Loss weighting",flavour='bb-jets',probb=predictions_new[:,0][jetFlavour==2],probbb=predictions_new[:,1][jetFlavour==2],probc=predictions_new[:,2][jetFlavour==2],probudsg=predictions_new[:,3][jetFlavour==2])
         classifierHist.fill(sample="Loss weighting",flavour='c-jets',probb=predictions_new[:,0][jetFlavour==3],probbb=predictions_new[:,1][jetFlavour==3],probc=predictions_new[:,2][jetFlavour==3],probudsg=predictions_new[:,3][jetFlavour==3])
         classifierHist.fill(sample="Loss weighting",flavour='udsg-jets',probb=predictions_new[:,0][jetFlavour==4],probbb=predictions_new[:,1][jetFlavour==4],probc=predictions_new[:,2][jetFlavour==4],probudsg=predictions_new[:,3][jetFlavour==4])
+    if do_flatptetaflavloss:
+        classifierHist.fill(sample="Loss weighting (flat)",flavour='b-jets',probb=predictions_new_flat[:,0][jetFlavour==1],probbb=predictions_new_flat[:,1][jetFlavour==1],probc=predictions_new_flat[:,2][jetFlavour==1],probudsg=predictions_new_flat[:,3][jetFlavour==1])
+        classifierHist.fill(sample="Loss weighting (flat)",flavour='bb-jets',probb=predictions_new_flat[:,0][jetFlavour==2],probbb=predictions_new_flat[:,1][jetFlavour==2],probc=predictions_new_flat[:,2][jetFlavour==2],probudsg=predictions_new_flat[:,3][jetFlavour==2])
+        classifierHist.fill(sample="Loss weighting (flat)",flavour='c-jets',probb=predictions_new_flat[:,0][jetFlavour==3],probbb=predictions_new_flat[:,1][jetFlavour==3],probc=predictions_new_flat[:,2][jetFlavour==3],probudsg=predictions_new_flat[:,3][jetFlavour==3])
+        classifierHist.fill(sample="Loss weighting (flat)",flavour='udsg-jets',probb=predictions_new_flat[:,0][jetFlavour==4],probbb=predictions_new_flat[:,1][jetFlavour==4],probc=predictions_new_flat[:,2][jetFlavour==4],probudsg=predictions_new_flat[:,3][jetFlavour==4])
 
 
     
@@ -336,6 +400,12 @@ def sum_hist():
         loss_w2 = hist.plot1d(classifierHist['Loss weighting'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'green','linewidth':3})
         loss_w3 = hist.plot1d(classifierHist['Loss weighting'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'green','linewidth':3})
         loss_w4 = hist.plot1d(classifierHist['Loss weighting'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':'green','linewidth':3})
+    if do_flatptetaflavloss:
+        loss_flat_w1 = hist.plot1d(classifierHist['Loss weighting (flat)'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':'green','linewidth':3})
+        loss_flat_w2 = hist.plot1d(classifierHist['Loss weighting (flat)'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'green','linewidth':3})
+        loss_flat_w3 = hist.plot1d(classifierHist['Loss weighting (flat)'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'green','linewidth':3})
+        loss_flat_w4 = hist.plot1d(classifierHist['Loss weighting (flat)'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':'green','linewidth':3})    
+    
     
     ax2.legend(loc='upper right',title='Outputs',ncol=1)
     ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
@@ -418,13 +488,18 @@ def flavsplit_hist(wm):
         del predictions_as_is
         gc.collect()
         method = 'No weighting applied'
-    else:
+    elif wm == '_ptetaflavloss':
         global predictions_new
         predictions = predictions_new
         del predictions_new
         gc.collect()
         method = 'Loss weighting'
-        
+    else:
+        global predictions_new_flat
+        predictions = predictions_new_flat
+        del predictions_new_flat
+        gc.collect()
+        method = 'Loss weighting (flat)'    
     classifierHist = hist.Hist("Jets",
                             hist.Cat("sample","sample name"),
                             hist.Cat("flavour","flavour of the jet"),
@@ -488,6 +563,7 @@ if weighting_method == '_compare':
     sum_hist()
     flavsplit_hist('_noweighting')
     flavsplit_hist('_ptetaflavloss')
+    flavsplit_hist('_flatptetaflavloss')
 else:
     sum_hist()
     flavsplit_hist(weighting_method)

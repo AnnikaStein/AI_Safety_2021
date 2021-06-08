@@ -26,12 +26,26 @@ if int(default) == default:
 minima = np.load('/home/um106329/aisafety/april_21/from_Nik/default_value_studies_minima.npy')
 defaults = minima - default
 
+# if one wants to change pt-eta such that in each bin, there is an equal amount of entries from every flavour (target: average per bin over the four flavours), but keeping
+# the average distribution (more low-pt than high-pt, more small eta than large eta and such)
+
 b_weights = np.load('/home/um106329/aisafety/may_21/absweights_b.npy')
 bb_weights = np.load('/home/um106329/aisafety/may_21/absweights_bb.npy')
 c_weights = np.load('/home/um106329/aisafety/may_21/absweights_c.npy')
 l_weights = np.load('/home/um106329/aisafety/may_21/absweights_l.npy')
 
 flavour_lookuptables = np.array([b_weights,bb_weights,c_weights,l_weights])
+
+
+# if one wants to use flat distributions (target for weighting is average over the whole pt-eta-histogram per flavour), multiplied by class imbalance, leads to rectangular
+# shapes, naturally (almost) identical between the different flavours ('almost' because not every bin is filled for large eta / pt for every flavour)
+
+b_weights_flat = np.load('/home/um106329/aisafety/may_21/weights_flat_b.npy')
+bb_weights_flat = np.load('/home/um106329/aisafety/may_21/weights_flat_bb.npy')
+c_weights_flat = np.load('/home/um106329/aisafety/may_21/weights_flat_c.npy')
+l_weights_flat = np.load('/home/um106329/aisafety/may_21/weights_flat_l.npy')
+
+flavour_lookuptables_flat = np.array([b_weights_flat,bb_weights_flat,c_weights_flat,l_weights_flat])
 
 if sample=='TT':
 
@@ -95,8 +109,11 @@ def preprocess(dataset, DeepCSV_dataset, s):
     test_pt_bins = test_pt_eta_bins[1]-1
     test_all_weights = flavour_lookuptables[test_targets,test_eta_bins,test_pt_bins]
     test_weights = test_all_weights/sum(test_all_weights)
+    test_all_weights_flat = flavour_lookuptables_flat[test_targets,test_eta_bins,test_pt_bins]
+    test_weights_flat = test_all_weights_flat/sum(test_all_weights_flat)
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/test_pt_eta_bins_%d_with_default_{default}.npy' % s,test_pt_eta_bins.astype(np.ubyte))
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/test_sample_weights_%d_with_default_{default}.npy' % s,test_weights)
+    np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/test_sample_weights_flat_%d_with_default_{default}.npy' % s,test_weights_flat)
     del test_pt_eta_bins
     del test_eta_bins
     del test_pt_bins
@@ -110,8 +127,11 @@ def preprocess(dataset, DeepCSV_dataset, s):
     val_pt_bins = val_pt_eta_bins[1]-1
     val_all_weights = flavour_lookuptables[val_targets,val_eta_bins,val_pt_bins]
     val_weights = val_all_weights/sum(val_all_weights)
+    val_all_weights_flat = flavour_lookuptables_flat[val_targets,val_eta_bins,val_pt_bins]
+    val_weights_flat = val_all_weights_flat/sum(val_all_weights_flat)
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/val_pt_eta_bins_%d_with_default_{default}.npy' % s,val_pt_eta_bins.astype(np.ubyte))
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/val_sample_weights_%d_with_default_{default}.npy' % s,val_weights)
+    np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/val_sample_weights_flat_%d_with_default_{default}.npy' % s,val_weights_flat)
     del val_pt_eta_bins
     del val_eta_bins
     del val_pt_bins
@@ -125,8 +145,11 @@ def preprocess(dataset, DeepCSV_dataset, s):
     train_pt_bins = train_pt_eta_bins[1]-1
     train_all_weights = flavour_lookuptables[train_targets,train_eta_bins,train_pt_bins]
     train_weights = train_all_weights/sum(train_all_weights)
+    train_all_weights_flat = flavour_lookuptables_flat[train_targets,train_eta_bins,train_pt_bins]
+    train_weights_flat = train_all_weights_flat/sum(train_all_weights_flat)
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/train_pt_eta_bins_%d_with_default_{default}.npy' % s,train_pt_eta_bins.astype(np.ubyte))
     np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/train_sample_weights_%d_with_default_{default}.npy' % s,train_weights)
+    np.save(f'/hpcwork/um106329/may_21/scaled_{sample}/train_sample_weights_flat_%d_with_default_{default}.npy' % s,train_weights_flat)
     del train_pt_eta_bins
     del train_eta_bins
     del train_pt_bins
@@ -135,7 +158,6 @@ def preprocess(dataset, DeepCSV_dataset, s):
     gc.collect()
     # the indices have been retrieved before the scaling happened (because afterwards, the values will be different and not be placed in the bins defined during the calculation
     # of the weights)
-    
     
     test_inputs = torch.Tensor(testset[:,0:67])                                                
     #test_targets = (torch.Tensor(testset[:,-1])).long()        
@@ -180,14 +202,14 @@ def preprocess(dataset, DeepCSV_dataset, s):
     del train_inputs
     del val_inputs
     del test_inputs
-    del trainset
-    del testset
-    del valset
     del train_targets
     del val_targets
     del test_targets
     del scaler
     del scalers
+    del trainset
+    del testset
+    del valset
     gc.collect()    
     
     
