@@ -30,7 +30,7 @@ colorcode = ['firebrick','magenta','cyan','darkgreen']
 parser = argparse.ArgumentParser(description="Setup for evaluation")
 parser.add_argument("files", type=int, help="Number of files for training")
 parser.add_argument("prevep", help="Number of previously trained epochs")
-parser.add_argument("wm", help="Weighting method: _noweighting, _ptetaflavloss or _all")
+parser.add_argument("wm", help="Weighting method: _noweighting, _ptetaflavloss, _flatptetaflavloss or _all")
 parser.add_argument("default", type=float, help="Default value")  # new, based on Nik's work
 parser.add_argument("jets", type=int, help="Number of jets, if one does not want to use all jets for training, if all jets shall be used, type -1")
 parser.add_argument("dominimal", help="Only do training with minimal setup, i.e. 15 QCD, 5 TT files")
@@ -510,7 +510,7 @@ if compare == False:
         time.sleep(5)
         plt.close('all')
         gc.collect(2)
-
+    
 
 
     '''
@@ -540,13 +540,13 @@ if compare == False:
     if weighting_method == '_all':
         # plot ROC BvsUDSG
         fig = plt.figure(figsize=[15,15],num=40)
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_as_is[:,0]+BvsUDSG_predictions_as_is[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_as_is[:,0]+BvsUDSG_predictions_as_is[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG as is: {metrics.auc(fpr,tpr)}")
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_new[:,0]+BvsUDSG_predictions_new[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_new[:,0]+BvsUDSG_predictions_new[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG new: {metrics.auc(fpr,tpr)}")
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_DeepCSV[:,0]+BvsUDSG_DeepCSV[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_DeepCSV[:,0]+BvsUDSG_DeepCSV[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG DeepCSV: {metrics.auc(fpr,tpr)}")
 
@@ -567,10 +567,10 @@ if compare == False:
     '''
     if weighting_method == '_noweighting':
         fig = plt.figure(figsize=[15,15],num=40)
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_as_is[:,0]+BvsUDSG_predictions_as_is[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_as_is[:,0]+BvsUDSG_predictions_as_is[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG as is: {metrics.auc(fpr,tpr)}")
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_DeepCSV[:,0]+BvsUDSG_DeepCSV[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_DeepCSV[:,0]+BvsUDSG_DeepCSV[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG DeepCSV: {metrics.auc(fpr,tpr)}")
         plt.xlabel('mistag rate')
@@ -587,10 +587,10 @@ if compare == False:
     '''
     if weighting_method == '_ptetaflavloss':
         fig = plt.figure(figsize=[15,15],num=40)
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_new[:,0]+BvsUDSG_predictions_new[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_new[:,0]+BvsUDSG_predictions_new[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG loss weighting: {metrics.auc(fpr,tpr)}")
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_DeepCSV[:,0]+BvsUDSG_DeepCSV[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_DeepCSV[:,0]+BvsUDSG_DeepCSV[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG DeepCSV: {metrics.auc(fpr,tpr)}")
         plt.xlabel('mistag rate')
@@ -605,10 +605,10 @@ if compare == False:
     '''
     if weighting_method == '_flatptetaflavloss':
         fig = plt.figure(figsize=[15,15],num=40)
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_new_flat[:,0]+BvsUDSG_predictions_new_flat[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_predictions_new_flat[:,0]+BvsUDSG_predictions_new_flat[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG loss weighting (flat): {metrics.auc(fpr,tpr)}")
-        fpr,tpr,thresholds = metrics.roc_curve(torch.where((test_targets==0) | (test_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_DeepCSV[:,0]+BvsUDSG_DeepCSV[:,1])
+        fpr,tpr,thresholds = metrics.roc_curve(torch.where((BvsUDSG_targets==0) | (BvsUDSG_targets==1), torch.ones(len_BvsUDSG), torch.zeros(len_BvsUDSG)),BvsUDSG_DeepCSV[:,0]+BvsUDSG_DeepCSV[:,1])
         plt.plot(fpr,tpr)
         print(f"auc for B vs UDSG DeepCSV: {metrics.auc(fpr,tpr)}")
         plt.xlabel('mistag rate')
