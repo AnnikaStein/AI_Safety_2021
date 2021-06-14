@@ -90,8 +90,19 @@ wm_def_text = {'_noweighting': 'No weighting',
                '_ptetaflavloss_focalloss' : 'Loss weighting (Focal Loss)', 
                '_flatptetaflavloss_focalloss' : 'Loss weighting (Flat, Focal Loss)'
               }
+wm_def_color = {'_noweighting': 'yellow', 
+               '_ptetaflavloss' : 'orange',
+               '_flatptetaflavloss' : 'brown',
+               '_ptetaflavloss_focalloss' : 'cyan', 
+               '_flatptetaflavloss_focalloss' : 'blue'
+              }
 
-
+# 51 bin edges betweeen 0 and 1 --> 50 bins of width 0.02, plus two additional bins at -0.05 and -0.025, as well as at 1.025 and 1.05
+# in total: 54 bins, 55 bin edges
+# ensures that there are bin edges at 0 and 1 ('exactly') with the option to plot DeepCSV defaults close to the other values
+bins = np.append(np.insert(np.linspace(0,0.98,50),0,[-0.05,-0.025]),[1.00001,1.025,1.05])
+#print(bins)
+#sys.exit()
 # Loading data will be necessary for all use cases
 
 if do_minimal_eval == 'no':
@@ -133,6 +144,16 @@ print('number of test inputs', len_test)
 test_targets = torch.cat(tuple(torch.load(ti) for ti in test_target_file_paths)).float()
 print('test targets done')
 DeepCSV_testset = np.concatenate([torch.load(ti) for ti in DeepCSV_testset_file_paths])
+# it might be that DeepCSV has some default outputs (-1 bin), plot them at the lower end of the histograms
+DeepCSV_testset[:,0][DeepCSV_testset[:,0] < 0] = -0.045
+DeepCSV_testset[:,1][DeepCSV_testset[:,1] < 0] = -0.045
+DeepCSV_testset[:,2][DeepCSV_testset[:,2] < 0] = -0.045
+DeepCSV_testset[:,3][DeepCSV_testset[:,3] < 0] = -0.045
+# and if for whatever reason there are values larger than 1, this could also not be interpreted as probability
+DeepCSV_testset[:,0][DeepCSV_testset[:,0] > 1] = +0.045
+DeepCSV_testset[:,1][DeepCSV_testset[:,1] > 1] = +0.045
+DeepCSV_testset[:,2][DeepCSV_testset[:,2] > 1] = +0.045
+DeepCSV_testset[:,3][DeepCSV_testset[:,3] > 1] = +0.045
 print('DeepCSV test done')
 
 jetFlavour = test_targets+1
@@ -524,7 +545,7 @@ def sum_hist():
     ax3.ticklabel_format(scilimits=(-5,5))
     ax4.ticklabel_format(scilimits=(-5,5))
     
-    fig.suptitle(f'Classifier and DeepCSV outputs\n After {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+    fig.suptitle(f'Classifier and DeepCSV outputs\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
     fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/{weighting_method}{fl_text}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=300)
     gc.collect()
     plt.show(block=False)
@@ -609,7 +630,7 @@ def flavsplit_hist(wm):
     ax3.ticklabel_format(scilimits=(-5,5))
     ax4.ticklabel_format(scilimits=(-5,5))
     
-    fig.suptitle(f'Classifier and DeepCSV outputs, {method}\n After {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+    fig.suptitle(f'Classifier and DeepCSV outputs, {method}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
     fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/weighting_method{wm}{fl_text}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=300)
     gc.collect()
     plt.show(block=False)
@@ -637,69 +658,541 @@ else:
 #
 # -----------------------------------------------------------------------------------------------------------------------------
 
-model = nn.Sequential(nn.Linear(67, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Linear(100, 4),
-                          nn.Softmax(dim=1))
+# create model, similar for all epochs / weighting methods and only load the weights during the loop
+# everything is in evaluation mode, and no gradients are necessary in this script
+
+with torch.no_grad():
+
+    model = nn.Sequential(nn.Linear(67, 100),
+                              nn.ReLU(),
+                              nn.Dropout(0.1),
+                              nn.Linear(100, 100),
+                              nn.ReLU(),
+                              nn.Dropout(0.1),
+                              nn.Linear(100, 100),
+                              nn.ReLU(),
+                              nn.Dropout(0.1),
+                              nn.Linear(100, 100),
+                              nn.ReLU(),
+                              nn.Dropout(0.1),
+                              nn.Linear(100, 100),
+                              nn.ReLU(),
+                              nn.Linear(100, 4),
+                              nn.Softmax(dim=1))
+
+
+    model.to(device)
+    model.eval()
+
+    if compare_eps:
+
+        KS_test_b_node  =  []
+        KS_test_bb_node =  []
+        KS_test_c_node  =  []
+        KS_test_l_node  =  []
+
+        for i,e in enumerate(epochs):
+            # get predictions and create histograms & KS test to the first specified epoch
+
+            checkpoint = torch.load(f'/hpcwork/um106329/may_21/saved_models/{weighting_method}_{NUM_DATASETS}_{default}_{n_samples}/model_{e}_epochs_v10_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
+            model.load_state_dict(checkpoint["model_state_dict"])
+
+            predictions = model(test_inputs).detach().numpy()
+
+            mostprob = np.argmax(predictions, axis=-1)
+            cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
+            print(f'epoch {e}\n',cfm)
+            with open(f'/home/um106329/aisafety/may_21/evaluate/confusion_matrices/weighting_method{weighting_method}_default_{default}_{n_samples}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
+                np.save(f, cfm)
+
+            wm_text = wm_def_text[weighting_method]
+
+            classifierHist = hist.Hist("Jets",
+                                hist.Cat("sample","sample name"),
+                                hist.Cat("flavour","flavour of the jet"),
+                                hist.Bin("probb","P(b)",50,-0.05,1.05),
+                                hist.Bin("probbb","P(bb)",50,-0.05,1.05),
+                                hist.Bin("probc","P(c)",50,-0.05,1.05),
+                                hist.Bin("probudsg","P(udsg)",50,-0.05,1.05),
+                             )
+
+            classifierHist.fill(sample=wm_text,flavour='b-jets',probb=predictions[:,0][jetFlavour==1],probbb=predictions[:,1][jetFlavour==1],probc=predictions[:,2][jetFlavour==1],probudsg=predictions[:,3][jetFlavour==1])
+            classifierHist.fill(sample=wm_text,flavour='bb-jets',probb=predictions[:,0][jetFlavour==2],probbb=predictions[:,1][jetFlavour==2],probc=predictions[:,2][jetFlavour==2],probudsg=predictions[:,3][jetFlavour==2])
+            classifierHist.fill(sample=wm_text,flavour='c-jets',probb=predictions[:,0][jetFlavour==3],probbb=predictions[:,1][jetFlavour==3],probc=predictions[:,2][jetFlavour==3],probudsg=predictions[:,3][jetFlavour==3])
+            classifierHist.fill(sample=wm_text,flavour='udsg-jets',probb=predictions[:,0][jetFlavour==4],probbb=predictions[:,1][jetFlavour==4],probc=predictions[:,2][jetFlavour==4],probudsg=predictions[:,3][jetFlavour==4])
+            classifierHist.fill(sample="DeepCSV",flavour='b-jets',probb=DeepCSV_testset[:,0][jetFlavour==1],probbb=DeepCSV_testset[:,1][jetFlavour==1],probc=DeepCSV_testset[:,2][jetFlavour==1],probudsg=DeepCSV_testset[:,3][jetFlavour==1])
+            classifierHist.fill(sample="DeepCSV",flavour='bb-jets',probb=DeepCSV_testset[:,0][jetFlavour==2],probbb=DeepCSV_testset[:,1][jetFlavour==2],probc=DeepCSV_testset[:,2][jetFlavour==2],probudsg=DeepCSV_testset[:,3][jetFlavour==2])
+            classifierHist.fill(sample="DeepCSV",flavour='c-jets',probb=DeepCSV_testset[:,0][jetFlavour==3],probbb=DeepCSV_testset[:,1][jetFlavour==3],probc=DeepCSV_testset[:,2][jetFlavour==3],probudsg=DeepCSV_testset[:,3][jetFlavour==3])
+            classifierHist.fill(sample="DeepCSV",flavour='udsg-jets',probb=DeepCSV_testset[:,0][jetFlavour==4],probbb=DeepCSV_testset[:,1][jetFlavour==4],probc=DeepCSV_testset[:,2][jetFlavour==4],probudsg=DeepCSV_testset[:,3][jetFlavour==4])
+
+            # split per flavour discriminator shapes
+
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+            #plt.subplots_adjust(wspace=0.4)
+            custom_ax1 = hist.plot1d(classifierHist[wm_text].sum('sample','probbb','probc','probudsg'),overlay='flavour',ax=ax1,clear=False,line_opts={'color':colorcode,'linewidth':3})
+            custom_ax2 = hist.plot1d(classifierHist[wm_text].sum('sample','probb','probc','probudsg'),overlay='flavour',ax=ax2,clear=False,line_opts={'color':colorcode,'linewidth':3})
+            custom_ax3 = hist.plot1d(classifierHist[wm_text].sum('sample','probb','probbb','probudsg'),overlay='flavour',ax=ax3,clear=False,line_opts={'color':colorcode,'linewidth':3})
+            custom_ax4 = hist.plot1d(classifierHist[wm_text].sum('sample','probb','probbb','probc'),overlay='flavour',ax=ax4,clear=False,line_opts={'color':colorcode,'linewidth':3})
+            dcsv_ax1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
+            dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
+            dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
+            dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
+            ax3.legend(loc='upper right',title='Outputs',ncol=1,fontsize=18,title_fontsize=19)
+            ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
+
+            ax1.set_ylim(bottom=0, auto=True)
+            ax2.set_ylim(bottom=0, auto=True)
+            ax3.set_ylim(bottom=0, auto=True)
+            ax4.set_ylim(bottom=0, auto=True)
+
+            ax1.set_yscale('log')
+            ax2.set_yscale('log')
+            #ax3.set_yscale('log')
+            #ax4.set_yscale('log')
+
+            ax1.autoscale(True)
+            ax2.autoscale(True)
+            ax3.autoscale(True)
+            ax4.autoscale(True)
+
+            #ax1.ticklabel_format(scilimits=(-5,5))
+            #ax2.ticklabel_format(scilimits=(-5,5))
+            ax3.ticklabel_format(scilimits=(-5,5))
+            ax4.ticklabel_format(scilimits=(-5,5))
+
+            fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
+            fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+            gc.collect()
+            plt.show(block=False)
+            time.sleep(5)
+            plt.clf()
+            plt.cla()
+            plt.close('all')
+            gc.collect(2)
+
+            # stacked discriminator shapes
+
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+            #plt.subplots_adjust(wspace=0.4)
+            custom_ax1 = hist.plot1d(classifierHist[wm_text].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
+            custom_ax2 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
+            custom_ax3 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
+            custom_ax4 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
+            dcsv_ax1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
+            dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
+            dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
+            dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
+            ax3.legend(loc='upper right',title='Outputs',ncol=1,fontsize=18,title_fontsize=19)
+            ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
+
+            ax1.set_ylim(bottom=0, auto=True)
+            ax2.set_ylim(bottom=0, auto=True)
+            ax3.set_ylim(bottom=0, auto=True)
+            ax4.set_ylim(bottom=0, auto=True)
+
+            ax1.set_yscale('log')
+            ax2.set_yscale('log')
+            #ax3.set_yscale('log')
+            #ax4.set_yscale('log')
+
+            ax1.autoscale(True)
+            ax2.autoscale(True)
+            ax3.autoscale(True)
+            ax4.autoscale(True)
+
+            #ax1.ticklabel_format(scilimits=(-5,5))
+            #ax2.ticklabel_format(scilimits=(-5,5))
+            ax3.ticklabel_format(scilimits=(-5,5))
+            ax4.ticklabel_format(scilimits=(-5,5))
+
+            fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
+            fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+            gc.collect()
+            plt.show(block=False)
+            time.sleep(5)
+            plt.clf()
+            plt.cla()
+            plt.close('all')
+            gc.collect(2)
 
 
 
-#checkpoint = torch.load(f'/hpcwork/um106329/may_21/saved_models/_noweighting_{NUM_DATASETS}_{default}_{n_samples}/model_{at_epoch}_epochs_v10_GPU_weighted_noweighting_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
-#model.load_state_dict(checkpoint["model_state_dict"])
-
-#model.to(device)
 
 
+            # check P(b) histogram
+            # had to learn how to access the values from the multid. histogram / coffea hist stuff
+            #classifierHist[wm_text].sum('sample','probbb','probc','probudsg')['b-jets'].values()[()]
+            #print(classifierHist[wm_text].sum('sample','probbb','probc','probudsg').dense_axes())
+            #print(classifierHist[wm_text].sum('sample','probbb','probc','probudsg')['b-jets'])
+            #print(classifierHist[wm_text].sum('flavour','probbb','probc','probudsg').values()[(wm_text,)])
+            #sys.exit()
+            
+            # there are four tagger outputs and in each there will be the entries per flavour, or all flavours together
+            # with sum one has to specify everything that is 'not' wanted individually
+            probb_b     = classifierHist[wm_text].sum('sample', 'probbb','probc','probudsg').values()[('b-jets',)]
+            probb_bb    = classifierHist[wm_text].sum('sample', 'probbb','probc','probudsg').values()[('bb-jets',)]
+            probb_c     = classifierHist[wm_text].sum('sample', 'probbb','probc','probudsg').values()[('c-jets',)]
+            probb_l     = classifierHist[wm_text].sum('sample', 'probbb','probc','probudsg').values()[('udsg-jets',)]
+            probb_stack = classifierHist[wm_text].sum('flavour','probbb','probc','probudsg').values()[(wm_text,)]
 
+            probbb_b     = classifierHist[wm_text].sum('sample', 'probb','probc','probudsg').values()[('b-jets',)]
+            probbb_bb    = classifierHist[wm_text].sum('sample', 'probb','probc','probudsg').values()[('bb-jets',)]
+            probbb_c     = classifierHist[wm_text].sum('sample', 'probb','probc','probudsg').values()[('c-jets',)]
+            probbb_l     = classifierHist[wm_text].sum('sample', 'probb','probc','probudsg').values()[('udsg-jets',)]
+            probbb_stack = classifierHist[wm_text].sum('flavour','probb','probc','probudsg').values()[(wm_text,)]
 
-#evaluate network on inputs
-#model.eval()
+            probc_b     = classifierHist[wm_text].sum('sample', 'probb','probbb','probudsg').values()[('b-jets',)]
+            probc_bb    = classifierHist[wm_text].sum('sample', 'probb','probbb','probudsg').values()[('bb-jets',)]
+            probc_c     = classifierHist[wm_text].sum('sample', 'probb','probbb','probudsg').values()[('c-jets',)]
+            probc_l     = classifierHist[wm_text].sum('sample', 'probb','probbb','probudsg').values()[('udsg-jets',)]
+            probc_stack = classifierHist[wm_text].sum('flavour','probb','probbb','probudsg').values()[(wm_text,)]
 
-model.to(device)
-model.eval()
+            probudsg_b     = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('b-jets',)]
+            probudsg_bb    = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('bb-jets',)]
+            probudsg_c     = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('c-jets',)]
+            probudsg_l     = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('udsg-jets',)]
+            probudsg_stack = classifierHist[wm_text].sum('flavour','probb','probbb','probc').values()[(wm_text,)]
+            
+            # save the histograms of the first secified epoch to later on compare against these
+            if i == 0:
+                first_probb_b     = probb_b    
+                first_probb_bb    = probb_bb   
+                first_probb_c     = probb_c    
+                first_probb_l     = probb_l    
+                first_probb_stack = probb_stack
 
-if compare_eps:
-    
-    KS_test_b_node  =  []
-    KS_test_bb_node =  []
-    KS_test_c_node  =  []
-    KS_test_l_node  =  []
-    
-    for i,e in enumerate(epochs):
-        # get predictions and create histograms & KS test to the first specified epoch
+                first_probbb_b     = probbb_b     
+                first_probbb_bb    = probbb_bb    
+                first_probbb_c     = probbb_c     
+                first_probbb_l     = probbb_l     
+                first_probbb_stack = probbb_stack 
+
+                first_probc_b     = probc_b    
+                first_probc_bb    = probc_bb   
+                first_probc_c     = probc_c    
+                first_probc_l     = probc_l    
+                first_probc_stack = probc_stack
+
+                first_probudsg_b     = probudsg_b    
+                first_probudsg_bb    = probudsg_bb   
+                first_probudsg_c     = probudsg_c    
+                first_probudsg_l     = probudsg_l    
+                first_probudsg_stack = probudsg_stack
+
+            # calculate every KS test of the current epoch and the first specified epoch, per node
+            KS_test_b_node.append([
+                np.asarray(ks_2samp(first_probb_b     , probb_b    )),
+                np.asarray(ks_2samp(first_probb_bb    , probb_bb   )),
+                np.asarray(ks_2samp(first_probb_c     , probb_c    )),
+                np.asarray(ks_2samp(first_probb_l     , probb_l    )),
+                np.asarray(ks_2samp(first_probb_stack , probb_stack))
+                                    ])
+            KS_test_bb_node.append([
+                np.asarray(ks_2samp(first_probbb_b     , probbb_b    )),
+                np.asarray(ks_2samp(first_probbb_bb    , probbb_bb   )),
+                np.asarray(ks_2samp(first_probbb_c     , probbb_c    )),
+                np.asarray(ks_2samp(first_probbb_l     , probbb_l    )),
+                np.asarray(ks_2samp(first_probbb_stack , probbb_stack))
+                                    ])
+            KS_test_c_node.append([
+                np.asarray(ks_2samp(first_probc_b     , probc_b    )),
+                np.asarray(ks_2samp(first_probc_bb    , probc_bb   )),
+                np.asarray(ks_2samp(first_probc_c     , probc_c    )),
+                np.asarray(ks_2samp(first_probc_l     , probc_l    )),
+                np.asarray(ks_2samp(first_probc_stack , probc_stack))
+                                    ])
+            KS_test_l_node.append([
+                np.asarray(ks_2samp(first_probudsg_b     , probudsg_b    )),
+                np.asarray(ks_2samp(first_probudsg_bb    , probudsg_bb   )),
+                np.asarray(ks_2samp(first_probudsg_c     , probudsg_c    )),
+                np.asarray(ks_2samp(first_probudsg_l     , probudsg_l    )),
+                np.asarray(ks_2samp(first_probudsg_stack , probudsg_stack))
+                                    ])   
+
+        #print(np.array(KS_test_l_node)[:,0,0])  # was used to debug / check if accessing the entries works correctly after reading the KS result as numpy array
+        #sys.exit()
         
-        checkpoint = torch.load(f'/hpcwork/um106329/may_21/saved_models/{weighting_method}_{NUM_DATASETS}_{default}_{n_samples}/model_{e}_epochs_v10_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
+        # KS_test_X_node is for tagger output node X and contains (dim 0): entries per epoch; next dim: entries per flavour (b,bb,c,l,stacked); next dim: statistic and p-value of the KS-test
+
+        # epoch --> x-axis, then different plots in same figure: 4 axes, in each will be the entries per output node X, and there should be five lines each (one per flav./stacked)
+        # and this for both the statistic and the p-value, so save two figures in the end
+
+
+        # =================================================================================================================
+        # 
+        #                                                 Plot KS statistics
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
+
+
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+
+        statistic_b_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,0,0],color=colorcode[0],label='b-jets')
+        statistic_bb_ax1    = ax1.plot(epochs,np.array(KS_test_b_node)[:,1,0],color=colorcode[1],label='bb-jets')
+        statistic_c_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,2,0],color=colorcode[2],label='c-jets')
+        statistic_l_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,3,0],color=colorcode[3],label='udsg-jets')
+        statistic_stack_ax1 = ax1.plot(epochs,np.array(KS_test_b_node)[:,4,0],color='orange',label='all jets')
+
+        statistic_b_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,0,0],color=colorcode[0],label='b-jets')
+        statistic_bb_ax2    = ax2.plot(epochs,np.array(KS_test_bb_node)[:,1,0],color=colorcode[1],label='bb-jets')
+        statistic_c_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,2,0],color=colorcode[2],label='c-jets')
+        statistic_l_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,3,0],color=colorcode[3],label='udsg-jets')
+        statistic_stack_ax2 = ax2.plot(epochs,np.array(KS_test_bb_node)[:,4,0],color='orange',label='all jets')
+
+        statistic_b_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,0,0],color=colorcode[0],label='b-jets')
+        statistic_bb_ax3    = ax3.plot(epochs,np.array(KS_test_c_node)[:,1,0],color=colorcode[1],label='bb-jets')
+        statistic_c_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,2,0],color=colorcode[2],label='c-jets')
+        statistic_l_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,3,0],color=colorcode[3],label='udsg-jets')
+        statistic_stack_ax3 = ax3.plot(epochs,np.array(KS_test_c_node)[:,4,0],color='orange',label='all jets')
+
+        statistic_b_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,0,0],color=colorcode[0],label='b-jets')
+        statistic_bb_ax4    = ax4.plot(epochs,np.array(KS_test_l_node)[:,1,0],color=colorcode[1],label='bb-jets')
+        statistic_c_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,2,0],color=colorcode[2],label='c-jets')
+        statistic_l_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,3,0],color=colorcode[3],label='udsg-jets')
+        statistic_stack_ax4 = ax4.plot(epochs,np.array(KS_test_l_node)[:,4,0],color='orange',label='all jets')
+
+
+
+        ax2.legend(loc='upper right',title='Outputs',ncol=1)
+        #ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
+
+        ax1.set_ylim(bottom=0, auto=True)
+        ax2.set_ylim(bottom=0, auto=True)
+        ax3.set_ylim(bottom=0, auto=True)
+        ax4.set_ylim(bottom=0, auto=True)
+
+        ax1.set_title('P(b)')
+        ax2.set_title('P(bb)')
+        ax3.set_title('P(c)')
+        ax4.set_title('P(udsg)')
+
+        ax1.set_xlabel('epoch')
+        ax2.set_xlabel('epoch')
+        ax3.set_xlabel('epoch')
+        ax4.set_xlabel('epoch')
+
+        ax1.set_ylabel('KS statistic')
+        ax2.set_ylabel('KS statistic')
+        ax3.set_ylabel('KS statistic')
+        ax4.set_ylabel('KS statistic')
+
+        #ax1.set_yscale('log')
+        #ax2.set_yscale('log')
+        #ax3.set_yscale('log')
+        #ax4.set_yscale('log')
+
+        ax1.autoscale(True)
+        ax2.autoscale(True)
+        ax3.autoscale(True)
+        ax4.autoscale(True)
+
+
+        fig.suptitle(f'KS test statistic, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KS_test_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        gc.collect()
+        plt.show(block=False)
+        time.sleep(5)
+        plt.clf()
+        plt.cla()
+        plt.close('all')
+        gc.collect(2)
+
+
+
+        # =================================================================================================================
+        # 
+        #                                                 Plot p-values
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
+
+
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+
+        pvalue_b_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,0,1],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax1    = ax1.plot(epochs,np.array(KS_test_b_node)[:,1,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,2,1],color=colorcode[2],label='c-jets')
+        pvalue_l_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,3,1],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax1 = ax1.plot(epochs,np.array(KS_test_b_node)[:,4,1],color='orange',label='all jets')
+
+        pvalue_b_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,0,1],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax2    = ax2.plot(epochs,np.array(KS_test_bb_node)[:,1,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,2,1],color=colorcode[2],label='c-jets')
+        pvalue_l_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,3,1],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax2 = ax2.plot(epochs,np.array(KS_test_bb_node)[:,4,1],color='orange',label='all jets')
+
+        pvalue_b_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,0,1],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax3    = ax3.plot(epochs,np.array(KS_test_c_node)[:,1,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,2,1],color=colorcode[2],label='c-jets')
+        pvalue_l_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,3,1],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax3 = ax3.plot(epochs,np.array(KS_test_c_node)[:,4,1],color='orange',label='all jets')
+
+        pvalue_b_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,0,1],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax4    = ax4.plot(epochs,np.array(KS_test_l_node)[:,1,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,2,1],color=colorcode[2],label='c-jets')
+        pvalue_l_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,3,1],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax4 = ax4.plot(epochs,np.array(KS_test_l_node)[:,4,1],color='orange',label='all jets')
+
+
+
+        ax2.legend(loc='upper right',title='Outputs',ncol=1)
+        #ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
+
+        ax1.set_ylim(bottom=0, auto=True)
+        ax2.set_ylim(bottom=0, auto=True)
+        ax3.set_ylim(bottom=0, auto=True)
+        ax4.set_ylim(bottom=0, auto=True)
+
+        ax1.set_title('P(b)')
+        ax2.set_title('P(bb)')
+        ax3.set_title('P(c)')
+        ax4.set_title('P(udsg)')
+
+        ax1.set_xlabel('epoch')
+        ax2.set_xlabel('epoch')
+        ax3.set_xlabel('epoch')
+        ax4.set_xlabel('epoch')
+
+        ax1.set_ylabel('KS p-value')
+        ax2.set_ylabel('KS p-value')
+        ax3.set_ylabel('KS p-value')
+        ax4.set_ylabel('KS p-value')
+
+        #ax1.set_yscale('log')
+        #ax2.set_yscale('log')
+        #ax3.set_yscale('log')
+        #ax4.set_yscale('log')
+
+        ax1.autoscale(True)
+        ax2.autoscale(True)
+        ax3.autoscale(True)
+        ax4.autoscale(True)
+
+
+        fig.suptitle(f'KS p-values, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KS_test_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        gc.collect()
+        plt.show(block=False)
+        time.sleep(5)
+        plt.clf()
+        plt.cla()
+        plt.close('all')
+        gc.collect(2)
+
+        # -----------------------------------------------------------------------------------------------------------------
+
+
+
+
+    elif compare_wmets:
+
+        wm_texts = []
+
+        # stacked discriminator shapes
+        classifierHist = hist.Hist("Jets",
+                                hist.Cat("sample","sample name"),
+                                hist.Cat("flavour","flavour of the jet"),
+                                hist.Bin("probb","P(b)",50,-0.05,1.05),
+                                hist.Bin("probbb","P(bb)",50,-0.05,1.05),
+                                hist.Bin("probc","P(c)",50,-0.05,1.05),
+                                hist.Bin("probudsg","P(udsg)",50,-0.05,1.05),
+                             )
+
+        classifierHist.fill(sample="DeepCSV",flavour='b-jets',probb=DeepCSV_testset[:,0][jetFlavour==1],probbb=DeepCSV_testset[:,1][jetFlavour==1],probc=DeepCSV_testset[:,2][jetFlavour==1],probudsg=DeepCSV_testset[:,3][jetFlavour==1])
+        classifierHist.fill(sample="DeepCSV",flavour='bb-jets',probb=DeepCSV_testset[:,0][jetFlavour==2],probbb=DeepCSV_testset[:,1][jetFlavour==2],probc=DeepCSV_testset[:,2][jetFlavour==2],probudsg=DeepCSV_testset[:,3][jetFlavour==2])
+        classifierHist.fill(sample="DeepCSV",flavour='c-jets',probb=DeepCSV_testset[:,0][jetFlavour==3],probbb=DeepCSV_testset[:,1][jetFlavour==3],probc=DeepCSV_testset[:,2][jetFlavour==3],probudsg=DeepCSV_testset[:,3][jetFlavour==3])
+        classifierHist.fill(sample="DeepCSV",flavour='udsg-jets',probb=DeepCSV_testset[:,0][jetFlavour==4],probbb=DeepCSV_testset[:,1][jetFlavour==4],probc=DeepCSV_testset[:,2][jetFlavour==4],probudsg=DeepCSV_testset[:,3][jetFlavour==4])
+
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+
+        dcsv_ax1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
+        dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
+        dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
+        dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
+
+        for w in wmets:
+            # get predictions and create histograms
+
+            checkpoint = torch.load(f'/hpcwork/um106329/may_21/saved_models/{w}_{NUM_DATASETS}_{default}_{n_samples}/model_{at_epoch}_epochs_v10_GPU_weighted{w}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
+            model.load_state_dict(checkpoint["model_state_dict"])
+
+            predictions = model(test_inputs).detach().numpy()
+
+            wm_text = wm_def_text[w]
+            wm_texts.append(wm_text)
+
+            classifierHist.fill(sample=wm_text,flavour='b-jets',probb=predictions[:,0][jetFlavour==1],probbb=predictions[:,1][jetFlavour==1],probc=predictions[:,2][jetFlavour==1],probudsg=predictions[:,3][jetFlavour==1])
+            classifierHist.fill(sample=wm_text,flavour='bb-jets',probb=predictions[:,0][jetFlavour==2],probbb=predictions[:,1][jetFlavour==2],probc=predictions[:,2][jetFlavour==2],probudsg=predictions[:,3][jetFlavour==2])
+            classifierHist.fill(sample=wm_text,flavour='c-jets',probb=predictions[:,0][jetFlavour==3],probbb=predictions[:,1][jetFlavour==3],probc=predictions[:,2][jetFlavour==3],probudsg=predictions[:,3][jetFlavour==3])
+            classifierHist.fill(sample=wm_text,flavour='udsg-jets',probb=predictions[:,0][jetFlavour==4],probbb=predictions[:,1][jetFlavour==4],probc=predictions[:,2][jetFlavour==4],probudsg=predictions[:,3][jetFlavour==4])
+
+
+
+            #plt.subplots_adjust(wspace=0.4)
+            custom_ax1 = hist.plot1d(classifierHist[wm_text].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':wm_def_color[w],'linewidth':3})
+            custom_ax2 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':wm_def_color[w],'linewidth':3})
+            custom_ax3 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':wm_def_color[w],'linewidth':3})
+            custom_ax4 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':wm_def_color[w],'linewidth':3})
+
+
+        ax3.legend(loc='upper right',title='Outputs',ncol=1,fontsize=18,title_fontsize=19)
+        ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
+
+        ax1.set_ylim(bottom=0, auto=True)
+        ax2.set_ylim(bottom=0, auto=True)
+        ax3.set_ylim(bottom=0, auto=True)
+        ax4.set_ylim(bottom=0, auto=True)
+
+        ax1.set_yscale('log')
+        ax2.set_yscale('log')
+        #ax3.set_yscale('log')
+        #ax4.set_yscale('log')
+
+        ax1.autoscale(True)
+        ax2.autoscale(True)
+        ax3.autoscale(True)
+        ax4.autoscale(True)
+
+        #ax1.ticklabel_format(scilimits=(-5,5))
+        #ax2.ticklabel_format(scilimits=(-5,5))
+        ax3.ticklabel_format(scilimits=(-5,5))
+        ax4.ticklabel_format(scilimits=(-5,5))
+
+        fig.suptitle(f'Classifier and DeepCSV outputs\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        gc.collect()
+        plt.show(block=False)
+        time.sleep(5)
+        plt.clf()
+        plt.cla()
+        plt.close('all')
+        gc.collect(2)
+
+        # -----------------------------------------------------------------------------------------------------------------
+
+    else:
+        
+        # this is just a very quick plot of one epoch, one weighting method only
+
+        checkpoint = torch.load(f'/hpcwork/um106329/may_21/saved_models/{weighting_method}_{NUM_DATASETS}_{default}_{n_samples}/model_{at_epoch}_epochs_v10_GPU_weighted{weighting_method}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
         model.load_state_dict(checkpoint["model_state_dict"])
-        
+
         predictions = model(test_inputs).detach().numpy()
 
         mostprob = np.argmax(predictions, axis=-1)
         cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
-        print(f'epoch {e}\n',cfm)
-        with open(f'/home/um106329/aisafety/may_21/evaluate/confusion_matrices/weighting_method{weighting_method}_default_{default}_{n_samples}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
+        print(f'epoch {at_epoch}\n',cfm)
+        with open(f'/home/um106329/aisafety/may_21/evaluate/confusion_matrices/weighting_method{weighting_method}_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
             np.save(f, cfm)
-        
+
         wm_text = wm_def_text[weighting_method]
-                
+
         classifierHist = hist.Hist("Jets",
                             hist.Cat("sample","sample name"),
                             hist.Cat("flavour","flavour of the jet"),
-                            hist.Bin("probb","P(b)",50,-0.05,1.05),
-                            hist.Bin("probbb","P(bb)",50,-0.05,1.05),
-                            hist.Bin("probc","P(c)",50,-0.05,1.05),
-                            hist.Bin("probudsg","P(udsg)",50,-0.05,1.05),
+                            hist.Bin("probb","P(b)",bins),
+                            hist.Bin("probbb","P(bb)",bins),
+                            hist.Bin("probc","P(c)",bins),
+                            hist.Bin("probudsg","P(udsg)",bins),
                          )
 
         classifierHist.fill(sample=wm_text,flavour='b-jets',probb=predictions[:,0][jetFlavour==1],probbb=predictions[:,1][jetFlavour==1],probc=predictions[:,2][jetFlavour==1],probudsg=predictions[:,3][jetFlavour==1])
@@ -710,9 +1203,9 @@ if compare_eps:
         classifierHist.fill(sample="DeepCSV",flavour='bb-jets',probb=DeepCSV_testset[:,0][jetFlavour==2],probbb=DeepCSV_testset[:,1][jetFlavour==2],probc=DeepCSV_testset[:,2][jetFlavour==2],probudsg=DeepCSV_testset[:,3][jetFlavour==2])
         classifierHist.fill(sample="DeepCSV",flavour='c-jets',probb=DeepCSV_testset[:,0][jetFlavour==3],probbb=DeepCSV_testset[:,1][jetFlavour==3],probc=DeepCSV_testset[:,2][jetFlavour==3],probudsg=DeepCSV_testset[:,3][jetFlavour==3])
         classifierHist.fill(sample="DeepCSV",flavour='udsg-jets',probb=DeepCSV_testset[:,0][jetFlavour==4],probbb=DeepCSV_testset[:,1][jetFlavour==4],probc=DeepCSV_testset[:,2][jetFlavour==4],probudsg=DeepCSV_testset[:,3][jetFlavour==4])
-        
+
         # split per flavour discriminator shapes
-        
+
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
         #plt.subplots_adjust(wspace=0.4)
         custom_ax1 = hist.plot1d(classifierHist[wm_text].sum('sample','probbb','probc','probudsg'),overlay='flavour',ax=ax1,clear=False,line_opts={'color':colorcode,'linewidth':3})
@@ -723,8 +1216,8 @@ if compare_eps:
         dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
-        ax2.legend(loc='upper right',title='Outputs',ncol=1)
-        ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
+        ax3.legend(loc='upper right',title='Outputs',ncol=1,fontsize=18,title_fontsize=19)
+        ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
 
         ax1.set_ylim(bottom=0, auto=True)
         ax2.set_ylim(bottom=0, auto=True)
@@ -746,8 +1239,8 @@ if compare_eps:
         ax3.ticklabel_format(scilimits=(-5,5))
         ax4.ticklabel_format(scilimits=(-5,5))
 
-        fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\n After {e} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -755,21 +1248,21 @@ if compare_eps:
         plt.cla()
         plt.close('all')
         gc.collect(2)
-        
+
         # stacked discriminator shapes
-        
+
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
         #plt.subplots_adjust(wspace=0.4)
-        custom_ax1 = hist.plot1d(classifierHist[wm_text].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':'blue','linewidth':3})
-        custom_ax2 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'blue','linewidth':3})
-        custom_ax3 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'blue','linewidth':3})
-        custom_ax4 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':'blue','linewidth':3})
-        dcsv_ax1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
-        dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
-        dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
-        dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.6,'facecolor':'red'})
-        ax2.legend(loc='upper right',title='Outputs',ncol=1)
-        ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
+        custom_ax1 = hist.plot1d(classifierHist[wm_text].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
+        custom_ax2 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
+        custom_ax3 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
+        custom_ax4 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
+        dcsv_ax1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.5,'facecolor':'red'})
+        dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.5,'facecolor':'red'})
+        dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.5,'facecolor':'red'})
+        dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.5,'facecolor':'red'})
+        ax3.legend(loc='upper right',title='Outputs',ncol=1,fontsize=18,title_fontsize=19)
+        ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
 
         ax1.set_ylim(bottom=0, auto=True)
         ax2.set_ylim(bottom=0, auto=True)
@@ -791,8 +1284,8 @@ if compare_eps:
         ax3.ticklabel_format(scilimits=(-5,5))
         ax4.ticklabel_format(scilimits=(-5,5))
 
-        fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\n After {e} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -800,292 +1293,3 @@ if compare_eps:
         plt.cla()
         plt.close('all')
         gc.collect(2)
-        
-        
-        
-        
-        
-        # check P(b) histogram
-        #classifierHist[wm_text].sum('sample','probbb','probc','probudsg')['b-jets'].values()[()]
-        #print(classifierHist[wm_text].sum('sample','probbb','probc','probudsg').dense_axes())
-        #print(classifierHist[wm_text].sum('sample','probbb','probc','probudsg')['b-jets'])
-        #print(classifierHist[wm_text].sum('flavour','probbb','probc','probudsg').values()[(wm_text,)])
-        #sys.exit()
-        
-        probb_b     = classifierHist[wm_text].sum('sample', 'probbb','probc','probudsg').values()[('b-jets',)]
-        probb_bb    = classifierHist[wm_text].sum('sample', 'probbb','probc','probudsg').values()[('bb-jets',)]
-        probb_c     = classifierHist[wm_text].sum('sample', 'probbb','probc','probudsg').values()[('c-jets',)]
-        probb_l     = classifierHist[wm_text].sum('sample', 'probbb','probc','probudsg').values()[('udsg-jets',)]
-        probb_stack = classifierHist[wm_text].sum('flavour','probbb','probc','probudsg').values()[(wm_text,)]
-        
-        probbb_b     = classifierHist[wm_text].sum('sample', 'probb','probc','probudsg').values()[('b-jets',)]
-        probbb_bb    = classifierHist[wm_text].sum('sample', 'probb','probc','probudsg').values()[('bb-jets',)]
-        probbb_c     = classifierHist[wm_text].sum('sample', 'probb','probc','probudsg').values()[('c-jets',)]
-        probbb_l     = classifierHist[wm_text].sum('sample', 'probb','probc','probudsg').values()[('udsg-jets',)]
-        probbb_stack = classifierHist[wm_text].sum('flavour','probb','probc','probudsg').values()[(wm_text,)]
-        
-        probc_b     = classifierHist[wm_text].sum('sample', 'probb','probbb','probudsg').values()[('b-jets',)]
-        probc_bb    = classifierHist[wm_text].sum('sample', 'probb','probbb','probudsg').values()[('bb-jets',)]
-        probc_c     = classifierHist[wm_text].sum('sample', 'probb','probbb','probudsg').values()[('c-jets',)]
-        probc_l     = classifierHist[wm_text].sum('sample', 'probb','probbb','probudsg').values()[('udsg-jets',)]
-        probc_stack = classifierHist[wm_text].sum('flavour','probb','probbb','probudsg').values()[(wm_text,)]
-        
-        probudsg_b     = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('b-jets',)]
-        probudsg_bb    = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('bb-jets',)]
-        probudsg_c     = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('c-jets',)]
-        probudsg_l     = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('udsg-jets',)]
-        probudsg_stack = classifierHist[wm_text].sum('flavour','probb','probbb','probc').values()[(wm_text,)]
-        
-        if i == 0:
-            first_probb_b     = probb_b    
-            first_probb_bb    = probb_bb   
-            first_probb_c     = probb_c    
-            first_probb_l     = probb_l    
-            first_probb_stack = probb_stack
-            
-            first_probbb_b     = probbb_b     
-            first_probbb_bb    = probbb_bb    
-            first_probbb_c     = probbb_c     
-            first_probbb_l     = probbb_l     
-            first_probbb_stack = probbb_stack 
-            
-            first_probc_b     = probc_b    
-            first_probc_bb    = probc_bb   
-            first_probc_c     = probc_c    
-            first_probc_l     = probc_l    
-            first_probc_stack = probc_stack
-            
-            first_probudsg_b     = probudsg_b    
-            first_probudsg_bb    = probudsg_bb   
-            first_probudsg_c     = probudsg_c    
-            first_probudsg_l     = probudsg_l    
-            first_probudsg_stack = probudsg_stack
-        
-        KS_test_b_node.append([
-            np.asarray(ks_2samp(first_probb_b     , probb_b    )),
-            np.asarray(ks_2samp(first_probb_bb    , probb_bb   )),
-            np.asarray(ks_2samp(first_probb_c     , probb_c    )),
-            np.asarray(ks_2samp(first_probb_l     , probb_l    )),
-            np.asarray(ks_2samp(first_probb_stack , probb_stack))
-                                ])
-        KS_test_bb_node.append([
-            np.asarray(ks_2samp(first_probbb_b     , probbb_b    )),
-            np.asarray(ks_2samp(first_probbb_bb    , probbb_bb   )),
-            np.asarray(ks_2samp(first_probbb_c     , probbb_c    )),
-            np.asarray(ks_2samp(first_probbb_l     , probbb_l    )),
-            np.asarray(ks_2samp(first_probbb_stack , probbb_stack))
-                                ])
-        KS_test_c_node.append([
-            np.asarray(ks_2samp(first_probc_b     , probc_b    )),
-            np.asarray(ks_2samp(first_probc_bb    , probc_bb   )),
-            np.asarray(ks_2samp(first_probc_c     , probc_c    )),
-            np.asarray(ks_2samp(first_probc_l     , probc_l    )),
-            np.asarray(ks_2samp(first_probc_stack , probc_stack))
-                                ])
-        KS_test_l_node.append([
-            np.asarray(ks_2samp(first_probudsg_b     , probudsg_b    )),
-            np.asarray(ks_2samp(first_probudsg_bb    , probudsg_bb   )),
-            np.asarray(ks_2samp(first_probudsg_c     , probudsg_c    )),
-            np.asarray(ks_2samp(first_probudsg_l     , probudsg_l    )),
-            np.asarray(ks_2samp(first_probudsg_stack , probudsg_stack))
-                                ])
-        
-        
-        #if i == 0:
-            # "compare first epoch with itself"
-                
-        #KS_test_b_node.append( [KS_b_b,  KS_b_bb,  KS_b_c,  KS_b_l,  KS_b_stack] )
-        #KS_test_bb_node.append([KS_bb_b, KS_bb_bb, KS_bb_c, KS_bb_l, KS_bb_stack])
-        #KS_test_c_node.append( [KS_c_b,  KS_c_bb,  KS_c_c,  KS_c_l,  KS_c_stack] )
-        #KS_test_l_node.append( [KS_l_b,  KS_l_bb,  KS_l_c,  KS_l_l,  KS_l_stack] )
-    
-    
-    #print(np.array(KS_test_l_node)[:,0,0])
-    #sys.exit()
-    # KS_test_X_node is for tagger output node X and contains (dim 0): entries per epoch; next dim: entries per flavour (b,bb,c,l,stacked); next dim: statistic and p-value of the KS-test
-    
-    # epoch --> x-axis, then different plots in same figure: 4 axes, in each will be the entries per output node X, and there should be five lines each (one per flav./stacked)
-    # and this for both the statistic and the p-value, so save two figures in the end
-    
-    
-    # =================================================================================================================
-    # 
-    #                                                 Plot KS statistics
-    # 
-    # -----------------------------------------------------------------------------------------------------------------
-      
-    
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
-    
-    #statistic_ax1 = plt.plot(,ax=ax1,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    #statistic_ax2 = plt.plot(ax=ax2,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    #statistic_ax3 = plt.plot(ax=ax3,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    statistic_b_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,0,0],color=colorcode[0],label='b-jets')
-    statistic_bb_ax1    = ax1.plot(epochs,np.array(KS_test_b_node)[:,1,0],color=colorcode[1],label='bb-jets')
-    statistic_c_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,2,0],color=colorcode[2],label='c-jets')
-    statistic_l_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,3,0],color=colorcode[3],label='udsg-jets')
-    statistic_stack_ax1 = ax1.plot(epochs,np.array(KS_test_b_node)[:,4,0],color='orange',label='all jets')
-    
-    statistic_b_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,0,0],color=colorcode[0],label='b-jets')
-    statistic_bb_ax2    = ax2.plot(epochs,np.array(KS_test_bb_node)[:,1,0],color=colorcode[1],label='bb-jets')
-    statistic_c_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,2,0],color=colorcode[2],label='c-jets')
-    statistic_l_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,3,0],color=colorcode[3],label='udsg-jets')
-    statistic_stack_ax2 = ax2.plot(epochs,np.array(KS_test_bb_node)[:,4,0],color='orange',label='all jets')
-    
-    statistic_b_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,0,0],color=colorcode[0],label='b-jets')
-    statistic_bb_ax3    = ax3.plot(epochs,np.array(KS_test_c_node)[:,1,0],color=colorcode[1],label='bb-jets')
-    statistic_c_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,2,0],color=colorcode[2],label='c-jets')
-    statistic_l_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,3,0],color=colorcode[3],label='udsg-jets')
-    statistic_stack_ax3 = ax3.plot(epochs,np.array(KS_test_c_node)[:,4,0],color='orange',label='all jets')
-    
-    statistic_b_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,0,0],color=colorcode[0],label='b-jets')
-    statistic_bb_ax4    = ax4.plot(epochs,np.array(KS_test_l_node)[:,1,0],color=colorcode[1],label='bb-jets')
-    statistic_c_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,2,0],color=colorcode[2],label='c-jets')
-    statistic_l_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,3,0],color=colorcode[3],label='udsg-jets')
-    statistic_stack_ax4 = ax4.plot(epochs,np.array(KS_test_l_node)[:,4,0],color='orange',label='all jets')
-    
-    
-    
-    ax2.legend(loc='upper right',title='Outputs',ncol=1)
-    #ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
-
-    ax1.set_ylim(bottom=0, auto=True)
-    ax2.set_ylim(bottom=0, auto=True)
-    ax3.set_ylim(bottom=0, auto=True)
-    ax4.set_ylim(bottom=0, auto=True)
-    
-    ax1.set_title('P(b)')
-    ax2.set_title('P(bb)')
-    ax3.set_title('P(c)')
-    ax4.set_title('P(udsg)')
-    
-    ax1.set_xlabel('epoch')
-    ax2.set_xlabel('epoch')
-    ax3.set_xlabel('epoch')
-    ax4.set_xlabel('epoch')
-    
-    ax1.set_ylabel('KS statistic')
-    ax2.set_ylabel('KS statistic')
-    ax3.set_ylabel('KS statistic')
-    ax4.set_ylabel('KS statistic')
-
-    #ax1.set_yscale('log')
-    #ax2.set_yscale('log')
-    #ax3.set_yscale('log')
-    #ax4.set_yscale('log')
-
-    ax1.autoscale(True)
-    ax2.autoscale(True)
-    ax3.autoscale(True)
-    ax4.autoscale(True)
-
-    
-    fig.suptitle(f'KS test statistic, {wm_text}\n After {e} epochs, evaluated on {len_test} jets, default {default}')
-    fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KS_test_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
-    gc.collect()
-    plt.show(block=False)
-    time.sleep(5)
-    plt.clf()
-    plt.cla()
-    plt.close('all')
-    gc.collect(2)
-        
-    
-    
-    # =================================================================================================================
-    # 
-    #                                                 Plot p-values
-    # 
-    # -----------------------------------------------------------------------------------------------------------------
-    
-    
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
-    
-    #statistic_ax1 = plt.plot(,ax=ax1,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    #statistic_ax2 = plt.plot(ax=ax2,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    #statistic_ax3 = plt.plot(ax=ax3,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    pvalue_b_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,0,1],color=colorcode[0],label='b-jets')
-    pvalue_bb_ax1    = ax1.plot(epochs,np.array(KS_test_b_node)[:,1,1],color=colorcode[1],label='bb-jets')
-    pvalue_c_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,2,1],color=colorcode[2],label='c-jets')
-    pvalue_l_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,3,1],color=colorcode[3],label='udsg-jets')
-    pvalue_stack_ax1 = ax1.plot(epochs,np.array(KS_test_b_node)[:,4,1],color='orange',label='all jets')
-    
-    pvalue_b_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,0,1],color=colorcode[0],label='b-jets')
-    pvalue_bb_ax2    = ax2.plot(epochs,np.array(KS_test_bb_node)[:,1,1],color=colorcode[1],label='bb-jets')
-    pvalue_c_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,2,1],color=colorcode[2],label='c-jets')
-    pvalue_l_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,3,1],color=colorcode[3],label='udsg-jets')
-    pvalue_stack_ax2 = ax2.plot(epochs,np.array(KS_test_bb_node)[:,4,1],color='orange',label='all jets')
-    
-    pvalue_b_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,0,1],color=colorcode[0],label='b-jets')
-    pvalue_bb_ax3    = ax3.plot(epochs,np.array(KS_test_c_node)[:,1,1],color=colorcode[1],label='bb-jets')
-    pvalue_c_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,2,1],color=colorcode[2],label='c-jets')
-    pvalue_l_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,3,1],color=colorcode[3],label='udsg-jets')
-    pvalue_stack_ax3 = ax3.plot(epochs,np.array(KS_test_c_node)[:,4,1],color='orange',label='all jets')
-    
-    pvalue_b_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,0,1],color=colorcode[0],label='b-jets')
-    pvalue_bb_ax4    = ax4.plot(epochs,np.array(KS_test_l_node)[:,1,1],color=colorcode[1],label='bb-jets')
-    pvalue_c_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,2,1],color=colorcode[2],label='c-jets')
-    pvalue_l_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,3,1],color=colorcode[3],label='udsg-jets')
-    pvalue_stack_ax4 = ax4.plot(epochs,np.array(KS_test_l_node)[:,4,1],color='orange',label='all jets')
-    
-    
-    
-    ax2.legend(loc='upper right',title='Outputs',ncol=1)
-    #ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
-
-    ax1.set_ylim(bottom=0, auto=True)
-    ax2.set_ylim(bottom=0, auto=True)
-    ax3.set_ylim(bottom=0, auto=True)
-    ax4.set_ylim(bottom=0, auto=True)
-    
-    ax1.set_title('P(b)')
-    ax2.set_title('P(bb)')
-    ax3.set_title('P(c)')
-    ax4.set_title('P(udsg)')
-    
-    ax1.set_xlabel('epoch')
-    ax2.set_xlabel('epoch')
-    ax3.set_xlabel('epoch')
-    ax4.set_xlabel('epoch')
-    
-    ax1.set_ylabel('KS p-value')
-    ax2.set_ylabel('KS p-value')
-    ax3.set_ylabel('KS p-value')
-    ax4.set_ylabel('KS p-value')
-
-    #ax1.set_yscale('log')
-    #ax2.set_yscale('log')
-    #ax3.set_yscale('log')
-    #ax4.set_yscale('log')
-
-    ax1.autoscale(True)
-    ax2.autoscale(True)
-    ax3.autoscale(True)
-    ax4.autoscale(True)
-
-    
-    fig.suptitle(f'KS p-values, {wm_text}\n After {e} epochs, evaluated on {len_test} jets, default {default}')
-    fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KS_test_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
-    gc.collect()
-    plt.show(block=False)
-    time.sleep(5)
-    plt.clf()
-    plt.cla()
-    plt.close('all')
-    gc.collect(2)
-    
-    # -----------------------------------------------------------------------------------------------------------------
-    
-    
-    
-    
-elif compare_wmets:
-    
-    for w in wmets:
-        # get predictions and create histograms & KS test to the first specified epoch
-        # ToDo
-        pass
-else:
-    # nothing will be compared, just do histograms for one epoch with one weighting method alone
-    # ToDo
-    pass

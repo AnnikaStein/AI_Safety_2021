@@ -49,7 +49,7 @@ if NUM_DATASETS == 20:
     time = 4
     mem = 16
 else:
-    time = 10
+    time = 11
     mem = 182
     factor_FILES = NUM_DATASETS / 278.0
 
@@ -59,7 +59,7 @@ if NUM_DATASETS == 20:
     time = int(np.rint(time * factor_EPOCHS) + 1)
     
 elif NUM_DATASETS == 278:
-    time = int(np.rint(time * factor_EPOCHS) + 1)
+    time = int(np.rint(time * factor_EPOCHS + 0.5))
 
 else:
     time = int(np.rint(time * factor_FILES * factor_EPOCHS) + 2)

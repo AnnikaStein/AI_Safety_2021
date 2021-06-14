@@ -12,7 +12,7 @@
 
 #SBATCH --output=output.%J.txt
 
-#SBATCH --time=04:10:00
+#SBATCH --time=00:20:00
 
 #SBATCH --account=rwth0583
 
@@ -30,4 +30,4 @@ cd /home/um106329/aisafety/may_21/evaluate
 # module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
-python3 eval_discriminator_shapes.py 20 100 '_compare' '0.001' '-1' 'yes' 'yes'
+python3 eval_discriminator_shapes.py 278 100 '_ptetaflavloss_focalloss' '0.001' '-1' 'no' 'yes'
