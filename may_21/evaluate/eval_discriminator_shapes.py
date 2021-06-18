@@ -20,6 +20,7 @@ import argparse
 import sys
 
 from scipy.stats import ks_2samp
+from scipy.stats import entropy
 
 #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = torch.device("cpu")
@@ -690,6 +691,11 @@ with torch.no_grad():
         KS_test_bb_node =  []
         KS_test_c_node  =  []
         KS_test_l_node  =  []
+        
+        KL_test_b_node  =  []
+        KL_test_bb_node =  []
+        KL_test_c_node  =  []
+        KL_test_l_node  =  []
 
         for i,e in enumerate(epochs):
             # get predictions and create histograms & KS test to the first specified epoch
@@ -853,61 +859,93 @@ with torch.no_grad():
             probudsg_l     = classifierHist[wm_text].sum('sample', 'probb','probbb','probc').values()[('udsg-jets',)]
             probudsg_stack = classifierHist[wm_text].sum('flavour','probb','probbb','probc').values()[(wm_text,)]
             
-            # save the histograms of the first secified epoch to later on compare against these
-            if i == 0:
-                first_probb_b     = probb_b    
-                first_probb_bb    = probb_bb   
-                first_probb_c     = probb_c    
-                first_probb_l     = probb_l    
-                first_probb_stack = probb_stack
+            
+            if i >= 1:
+            # calculate every KS test of the current epoch and the previous epoch, per node (KS is symmetric)
+                KS_test_b_node.append([
+                    np.asarray(ks_2samp(nth_probb_b     , probb_b    )),
+                    np.asarray(ks_2samp(nth_probb_bb    , probb_bb   )),
+                    np.asarray(ks_2samp(nth_probb_c     , probb_c    )),
+                    np.asarray(ks_2samp(nth_probb_l     , probb_l    )),
+                    np.asarray(ks_2samp(nth_probb_stack , probb_stack))
+                                        ])
+                KS_test_bb_node.append([
+                    np.asarray(ks_2samp(nth_probbb_b     , probbb_b    )),
+                    np.asarray(ks_2samp(nth_probbb_bb    , probbb_bb   )),
+                    np.asarray(ks_2samp(nth_probbb_c     , probbb_c    )),
+                    np.asarray(ks_2samp(nth_probbb_l     , probbb_l    )),
+                    np.asarray(ks_2samp(nth_probbb_stack , probbb_stack))
+                                        ])
+                KS_test_c_node.append([
+                    np.asarray(ks_2samp(nth_probc_b     , probc_b    )),
+                    np.asarray(ks_2samp(nth_probc_bb    , probc_bb   )),
+                    np.asarray(ks_2samp(nth_probc_c     , probc_c    )),
+                    np.asarray(ks_2samp(nth_probc_l     , probc_l    )),
+                    np.asarray(ks_2samp(nth_probc_stack , probc_stack))
+                                        ])
+                KS_test_l_node.append([
+                    np.asarray(ks_2samp(nth_probudsg_b     , probudsg_b    )),
+                    np.asarray(ks_2samp(nth_probudsg_bb    , probudsg_bb   )),
+                    np.asarray(ks_2samp(nth_probudsg_c     , probudsg_c    )),
+                    np.asarray(ks_2samp(nth_probudsg_l     , probudsg_l    )),
+                    np.asarray(ks_2samp(nth_probudsg_stack , probudsg_stack))
+                                        ])  
+                
+            # calculate every KL divergence of the current epoch and the previous epoch, per node (KL not symmetric, take Q as approx. of P)
+                KL_test_b_node.append([
+                    np.asarray(entropy(probb_b     , qk=nth_probb_b    )),
+                    np.asarray(entropy(probb_bb    , qk=nth_probb_bb   )),
+                    np.asarray(entropy(probb_c     , qk=nth_probb_c    )),
+                    np.asarray(entropy(probb_l     , qk=nth_probb_l    )),
+                    np.asarray(entropy(probb_stack , qk=nth_probb_stack))
+                                        ])
+                KL_test_bb_node.append([
+                    np.asarray(entropy(probbb_b     , qk=nth_probbb_b    )),
+                    np.asarray(entropy(probbb_bb    , qk=nth_probbb_bb   )),
+                    np.asarray(entropy(probbb_c     , qk=nth_probbb_c    )),
+                    np.asarray(entropy(probbb_l     , qk=nth_probbb_l    )),
+                    np.asarray(entropy(probbb_stack , qk=nth_probbb_stack))
+                                        ])
+                KL_test_c_node.append([
+                    np.asarray(entropy(probc_b     , qk=nth_probc_b    )),
+                    np.asarray(entropy(probc_bb    , qk=nth_probc_bb   )),
+                    np.asarray(entropy(probc_c     , qk=nth_probc_c    )),
+                    np.asarray(entropy(probc_l     , qk=nth_probc_l    )),
+                    np.asarray(entropy(probc_stack , qk=nth_probc_stack))
+                                        ])
+                KL_test_l_node.append([
+                    np.asarray(entropy(probudsg_b     , qk=nth_probudsg_b    )),
+                    np.asarray(entropy(probudsg_bb    , qk=nth_probudsg_bb   )),
+                    np.asarray(entropy(probudsg_c     , qk=nth_probudsg_c    )),
+                    np.asarray(entropy(probudsg_l     , qk=nth_probudsg_l    )),
+                    np.asarray(entropy(probudsg_stack , qk=nth_probudsg_stack))
+                                        ]) 
+            
+            
+            # save the histograms of the current epoch n to compare this to epoch n+1 during the next iteration of the loop
+            nth_probb_b     = probb_b    
+            nth_probb_bb    = probb_bb   
+            nth_probb_c     = probb_c    
+            nth_probb_l     = probb_l    
+            nth_probb_stack = probb_stack
 
-                first_probbb_b     = probbb_b     
-                first_probbb_bb    = probbb_bb    
-                first_probbb_c     = probbb_c     
-                first_probbb_l     = probbb_l     
-                first_probbb_stack = probbb_stack 
+            nth_probbb_b     = probbb_b     
+            nth_probbb_bb    = probbb_bb    
+            nth_probbb_c     = probbb_c     
+            nth_probbb_l     = probbb_l     
+            nth_probbb_stack = probbb_stack 
 
-                first_probc_b     = probc_b    
-                first_probc_bb    = probc_bb   
-                first_probc_c     = probc_c    
-                first_probc_l     = probc_l    
-                first_probc_stack = probc_stack
+            nth_probc_b     = probc_b    
+            nth_probc_bb    = probc_bb   
+            nth_probc_c     = probc_c    
+            nth_probc_l     = probc_l    
+            nth_probc_stack = probc_stack
 
-                first_probudsg_b     = probudsg_b    
-                first_probudsg_bb    = probudsg_bb   
-                first_probudsg_c     = probudsg_c    
-                first_probudsg_l     = probudsg_l    
-                first_probudsg_stack = probudsg_stack
-
-            # calculate every KS test of the current epoch and the first specified epoch, per node
-            KS_test_b_node.append([
-                np.asarray(ks_2samp(first_probb_b     , probb_b    )),
-                np.asarray(ks_2samp(first_probb_bb    , probb_bb   )),
-                np.asarray(ks_2samp(first_probb_c     , probb_c    )),
-                np.asarray(ks_2samp(first_probb_l     , probb_l    )),
-                np.asarray(ks_2samp(first_probb_stack , probb_stack))
-                                    ])
-            KS_test_bb_node.append([
-                np.asarray(ks_2samp(first_probbb_b     , probbb_b    )),
-                np.asarray(ks_2samp(first_probbb_bb    , probbb_bb   )),
-                np.asarray(ks_2samp(first_probbb_c     , probbb_c    )),
-                np.asarray(ks_2samp(first_probbb_l     , probbb_l    )),
-                np.asarray(ks_2samp(first_probbb_stack , probbb_stack))
-                                    ])
-            KS_test_c_node.append([
-                np.asarray(ks_2samp(first_probc_b     , probc_b    )),
-                np.asarray(ks_2samp(first_probc_bb    , probc_bb   )),
-                np.asarray(ks_2samp(first_probc_c     , probc_c    )),
-                np.asarray(ks_2samp(first_probc_l     , probc_l    )),
-                np.asarray(ks_2samp(first_probc_stack , probc_stack))
-                                    ])
-            KS_test_l_node.append([
-                np.asarray(ks_2samp(first_probudsg_b     , probudsg_b    )),
-                np.asarray(ks_2samp(first_probudsg_bb    , probudsg_bb   )),
-                np.asarray(ks_2samp(first_probudsg_c     , probudsg_c    )),
-                np.asarray(ks_2samp(first_probudsg_l     , probudsg_l    )),
-                np.asarray(ks_2samp(first_probudsg_stack , probudsg_stack))
-                                    ])   
+            nth_probudsg_b     = probudsg_b    
+            nth_probudsg_bb    = probudsg_bb   
+            nth_probudsg_c     = probudsg_c    
+            nth_probudsg_l     = probudsg_l    
+            nth_probudsg_stack = probudsg_stack
 
         #print(np.array(KS_test_l_node)[:,0,0])  # was used to debug / check if accessing the entries works correctly after reading the KS result as numpy array
         #sys.exit()
@@ -927,29 +965,29 @@ with torch.no_grad():
 
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
 
-        statistic_b_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,0,0],color=colorcode[0],label='b-jets')
-        statistic_bb_ax1    = ax1.plot(epochs,np.array(KS_test_b_node)[:,1,0],color=colorcode[1],label='bb-jets')
-        statistic_c_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,2,0],color=colorcode[2],label='c-jets')
-        statistic_l_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,3,0],color=colorcode[3],label='udsg-jets')
-        statistic_stack_ax1 = ax1.plot(epochs,np.array(KS_test_b_node)[:,4,0],color='orange',label='all jets')
+        statistic_b_ax1     = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,0,0],color=colorcode[0],label='b-jets')
+        statistic_bb_ax1    = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,1,0],color=colorcode[1],label='bb-jets')
+        statistic_c_ax1     = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,2,0],color=colorcode[2],label='c-jets')
+        statistic_l_ax1     = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,3,0],color=colorcode[3],label='udsg-jets')
+        statistic_stack_ax1 = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,4,0],color='orange',label='all jets')
 
-        statistic_b_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,0,0],color=colorcode[0],label='b-jets')
-        statistic_bb_ax2    = ax2.plot(epochs,np.array(KS_test_bb_node)[:,1,0],color=colorcode[1],label='bb-jets')
-        statistic_c_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,2,0],color=colorcode[2],label='c-jets')
-        statistic_l_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,3,0],color=colorcode[3],label='udsg-jets')
-        statistic_stack_ax2 = ax2.plot(epochs,np.array(KS_test_bb_node)[:,4,0],color='orange',label='all jets')
+        statistic_b_ax2     = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,0,0],color=colorcode[0],label='b-jets')
+        statistic_bb_ax2    = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,1,0],color=colorcode[1],label='bb-jets')
+        statistic_c_ax2     = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,2,0],color=colorcode[2],label='c-jets')
+        statistic_l_ax2     = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,3,0],color=colorcode[3],label='udsg-jets')
+        statistic_stack_ax2 = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,4,0],color='orange',label='all jets')
 
-        statistic_b_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,0,0],color=colorcode[0],label='b-jets')
-        statistic_bb_ax3    = ax3.plot(epochs,np.array(KS_test_c_node)[:,1,0],color=colorcode[1],label='bb-jets')
-        statistic_c_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,2,0],color=colorcode[2],label='c-jets')
-        statistic_l_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,3,0],color=colorcode[3],label='udsg-jets')
-        statistic_stack_ax3 = ax3.plot(epochs,np.array(KS_test_c_node)[:,4,0],color='orange',label='all jets')
+        statistic_b_ax3     = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,0,0],color=colorcode[0],label='b-jets')
+        statistic_bb_ax3    = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,1,0],color=colorcode[1],label='bb-jets')
+        statistic_c_ax3     = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,2,0],color=colorcode[2],label='c-jets')
+        statistic_l_ax3     = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,3,0],color=colorcode[3],label='udsg-jets')
+        statistic_stack_ax3 = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,4,0],color='orange',label='all jets')
 
-        statistic_b_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,0,0],color=colorcode[0],label='b-jets')
-        statistic_bb_ax4    = ax4.plot(epochs,np.array(KS_test_l_node)[:,1,0],color=colorcode[1],label='bb-jets')
-        statistic_c_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,2,0],color=colorcode[2],label='c-jets')
-        statistic_l_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,3,0],color=colorcode[3],label='udsg-jets')
-        statistic_stack_ax4 = ax4.plot(epochs,np.array(KS_test_l_node)[:,4,0],color='orange',label='all jets')
+        statistic_b_ax4     = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,0,0],color=colorcode[0],label='b-jets')
+        statistic_bb_ax4    = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,1,0],color=colorcode[1],label='bb-jets')
+        statistic_c_ax4     = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,2,0],color=colorcode[2],label='c-jets')
+        statistic_l_ax4     = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,3,0],color=colorcode[3],label='udsg-jets')
+        statistic_stack_ax4 = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,4,0],color='orange',label='all jets')
 
 
 
@@ -988,7 +1026,7 @@ with torch.no_grad():
 
 
         fig.suptitle(f'KS test statistic, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KS_test_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KS_test_nnplus1_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -1008,29 +1046,29 @@ with torch.no_grad():
 
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
 
-        pvalue_b_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,0,1],color=colorcode[0],label='b-jets')
-        pvalue_bb_ax1    = ax1.plot(epochs,np.array(KS_test_b_node)[:,1,1],color=colorcode[1],label='bb-jets')
-        pvalue_c_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,2,1],color=colorcode[2],label='c-jets')
-        pvalue_l_ax1     = ax1.plot(epochs,np.array(KS_test_b_node)[:,3,1],color=colorcode[3],label='udsg-jets')
-        pvalue_stack_ax1 = ax1.plot(epochs,np.array(KS_test_b_node)[:,4,1],color='orange',label='all jets')
+        pvalue_b_ax1     = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,0,1],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax1    = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,1,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax1     = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,2,1],color=colorcode[2],label='c-jets')
+        pvalue_l_ax1     = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,3,1],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax1 = ax1.plot(epochs[1:],np.array(KS_test_b_node)[:,4,1],color='orange',label='all jets')
 
-        pvalue_b_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,0,1],color=colorcode[0],label='b-jets')
-        pvalue_bb_ax2    = ax2.plot(epochs,np.array(KS_test_bb_node)[:,1,1],color=colorcode[1],label='bb-jets')
-        pvalue_c_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,2,1],color=colorcode[2],label='c-jets')
-        pvalue_l_ax2     = ax2.plot(epochs,np.array(KS_test_bb_node)[:,3,1],color=colorcode[3],label='udsg-jets')
-        pvalue_stack_ax2 = ax2.plot(epochs,np.array(KS_test_bb_node)[:,4,1],color='orange',label='all jets')
+        pvalue_b_ax2     = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,0,1],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax2    = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,1,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax2     = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,2,1],color=colorcode[2],label='c-jets')
+        pvalue_l_ax2     = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,3,1],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax2 = ax2.plot(epochs[1:],np.array(KS_test_bb_node)[:,4,1],color='orange',label='all jets')
 
-        pvalue_b_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,0,1],color=colorcode[0],label='b-jets')
-        pvalue_bb_ax3    = ax3.plot(epochs,np.array(KS_test_c_node)[:,1,1],color=colorcode[1],label='bb-jets')
-        pvalue_c_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,2,1],color=colorcode[2],label='c-jets')
-        pvalue_l_ax3     = ax3.plot(epochs,np.array(KS_test_c_node)[:,3,1],color=colorcode[3],label='udsg-jets')
-        pvalue_stack_ax3 = ax3.plot(epochs,np.array(KS_test_c_node)[:,4,1],color='orange',label='all jets')
+        pvalue_b_ax3     = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,0,1],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax3    = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,1,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax3     = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,2,1],color=colorcode[2],label='c-jets')
+        pvalue_l_ax3     = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,3,1],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax3 = ax3.plot(epochs[1:],np.array(KS_test_c_node)[:,4,1],color='orange',label='all jets')
 
-        pvalue_b_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,0,1],color=colorcode[0],label='b-jets')
-        pvalue_bb_ax4    = ax4.plot(epochs,np.array(KS_test_l_node)[:,1,1],color=colorcode[1],label='bb-jets')
-        pvalue_c_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,2,1],color=colorcode[2],label='c-jets')
-        pvalue_l_ax4     = ax4.plot(epochs,np.array(KS_test_l_node)[:,3,1],color=colorcode[3],label='udsg-jets')
-        pvalue_stack_ax4 = ax4.plot(epochs,np.array(KS_test_l_node)[:,4,1],color='orange',label='all jets')
+        pvalue_b_ax4     = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,0,1],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax4    = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,1,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax4     = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,2,1],color=colorcode[2],label='c-jets')
+        pvalue_l_ax4     = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,3,1],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax4 = ax4.plot(epochs[1:],np.array(KS_test_l_node)[:,4,1],color='orange',label='all jets')
 
 
 
@@ -1069,7 +1107,7 @@ with torch.no_grad():
 
 
         fig.suptitle(f'KS p-values, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KS_test_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KS_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -1078,6 +1116,88 @@ with torch.no_grad():
         plt.close('all')
         gc.collect(2)
 
+        
+        
+        # =================================================================================================================
+        # 
+        #                                                 Plot KL-divergences
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
+
+
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+
+        pvalue_b_ax1     = ax1.plot(epochs[1:],np.array(KL_test_b_node)[:,0],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax1    = ax1.plot(epochs[1:],np.array(KL_test_b_node)[:,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax1     = ax1.plot(epochs[1:],np.array(KL_test_b_node)[:,2],color=colorcode[2],label='c-jets')
+        pvalue_l_ax1     = ax1.plot(epochs[1:],np.array(KL_test_b_node)[:,3],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax1 = ax1.plot(epochs[1:],np.array(KL_test_b_node)[:,4],color='orange',label='all jets')
+
+        pvalue_b_ax2     = ax2.plot(epochs[1:],np.array(KL_test_bb_node)[:,0],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax2    = ax2.plot(epochs[1:],np.array(KL_test_bb_node)[:,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax2     = ax2.plot(epochs[1:],np.array(KL_test_bb_node)[:,2],color=colorcode[2],label='c-jets')
+        pvalue_l_ax2     = ax2.plot(epochs[1:],np.array(KL_test_bb_node)[:,3],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax2 = ax2.plot(epochs[1:],np.array(KL_test_bb_node)[:,4],color='orange',label='all jets')
+
+        pvalue_b_ax3     = ax3.plot(epochs[1:],np.array(KL_test_c_node)[:,0],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax3    = ax3.plot(epochs[1:],np.array(KL_test_c_node)[:,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax3     = ax3.plot(epochs[1:],np.array(KL_test_c_node)[:,2],color=colorcode[2],label='c-jets')
+        pvalue_l_ax3     = ax3.plot(epochs[1:],np.array(KL_test_c_node)[:,3],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax3 = ax3.plot(epochs[1:],np.array(KL_test_c_node)[:,4],color='orange',label='all jets')
+
+        pvalue_b_ax4     = ax4.plot(epochs[1:],np.array(KL_test_l_node)[:,0],color=colorcode[0],label='b-jets')
+        pvalue_bb_ax4    = ax4.plot(epochs[1:],np.array(KL_test_l_node)[:,1],color=colorcode[1],label='bb-jets')
+        pvalue_c_ax4     = ax4.plot(epochs[1:],np.array(KL_test_l_node)[:,2],color=colorcode[2],label='c-jets')
+        pvalue_l_ax4     = ax4.plot(epochs[1:],np.array(KL_test_l_node)[:,3],color=colorcode[3],label='udsg-jets')
+        pvalue_stack_ax4 = ax4.plot(epochs[1:],np.array(KL_test_l_node)[:,4],color='orange',label='all jets')
+
+
+
+        ax2.legend(loc='upper right',title='Outputs',ncol=1)
+        #ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
+
+        ax1.set_ylim(bottom=0, auto=True)
+        ax2.set_ylim(bottom=0, auto=True)
+        ax3.set_ylim(bottom=0, auto=True)
+        ax4.set_ylim(bottom=0, auto=True)
+
+        ax1.set_title('P(b)')
+        ax2.set_title('P(bb)')
+        ax3.set_title('P(c)')
+        ax4.set_title('P(udsg)')
+
+        ax1.set_xlabel('epoch')
+        ax2.set_xlabel('epoch')
+        ax3.set_xlabel('epoch')
+        ax4.set_xlabel('epoch')
+
+        ax1.set_ylabel('KL divergence')
+        ax2.set_ylabel('KL divergence')
+        ax3.set_ylabel('KL divergence')
+        ax4.set_ylabel('KL divergence')
+
+        #ax1.set_yscale('log')
+        #ax2.set_yscale('log')
+        #ax3.set_yscale('log')
+        #ax4.set_yscale('log')
+
+        ax1.autoscale(True)
+        ax2.autoscale(True)
+        ax3.autoscale(True)
+        ax4.autoscale(True)
+
+
+        fig.suptitle(f'KL divergences, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/may_21/evaluate/discriminator_shapes/KL_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        gc.collect()
+        plt.show(block=False)
+        time.sleep(5)
+        plt.clf()
+        plt.cla()
+        plt.close('all')
+        gc.collect(2)
+        
+        
         # -----------------------------------------------------------------------------------------------------------------
 
 
