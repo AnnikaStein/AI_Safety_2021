@@ -86,12 +86,14 @@ if prepstep == 'apply_to_TT':
     dataset_paths = TTdataset_paths
     DeepCSV_paths = TTDeepCSV_paths
     NUM_DATASETS = TTNUM_DATASETS
+    sample = 'TT'
 
 elif prepstep == 'apply_to_QCD':
 
     dataset_paths = QCDdataset_paths
     DeepCSV_paths = QCDDeepCSV_paths
     NUM_DATASETS = QCDNUM_DATASETS
+    sample = 'QCD'
 
 
 else:  # calc_scalers
@@ -101,7 +103,7 @@ else:  # calc_scalers
     # independently of the number of arrays passed into the function call, and has reproducible results if random_state is given.
 
 
-def calc_scalers_from_full_training_sample(i):
+def calc_scalers_from_full_training_sample(starvar,endvar):
 
     def get_trainingsamples(dataset):
         # to calculate the scalers, one really only needs to use the training samples, which are created by using the train_test_split twice
@@ -112,20 +114,23 @@ def calc_scalers_from_full_training_sample(i):
     
     # first idea was to do the scalers similar to before, all in one go,
     # but to run on interactive node: split up per variable
-    #scalers = []
+    # second idea: do it per variable
+    # third idea: not the full set, but at least several variables together, that stil fit into memory and use rather fast array slicing
+    scalers = []
     
     #for i in range(0,67):
     # get the training set for the current input, considering all available files for the training at once
     # to keep the same split as for the later creation of the train / val / test sets, it is necessary to do the splitting on all files separately,
     # and only merge the training samples afterwards
-    all_train_inputs_ith_variable = np.concatenate([get_trainingsamples(np.load(path)[:,i]) for path in dataset_paths])
+    all_train_inputs_variable_start_end = np.concatenate([get_trainingsamples(np.load(path)[:,startvar:endvar+1]) for path in dataset_paths])
 
     # do not compute scalers with default values, which were set to minima-default
-    scaler = StandardScaler().fit(all_train_inputs_ith_variable[all_train_inputs_ith_variable != defaults[i]].reshape(-1,1))
-    #scalers.append(scaler)
+    for i in range(endvar+1-startvar):
+        scaler = StandardScaler().fit(all_train_inputs_variable_start_end[:,i][all_train_inputs_variable_start_end[:,i] != defaults[i]].reshape(-1,1))
+        scalers.append(scaler)
     
-    #return scalers
-    return scaler
+    return scalers
+    #return scaler
     
     
 
@@ -214,13 +219,12 @@ def preprocess(dataset, DeepCSV_dataset, s):
     
     norm_train_inputs,norm_val_inputs,norm_test_inputs = train_inputs.clone().detach(),val_inputs.clone().detach(),test_inputs.clone().detach()
     #scalers = []
-    scalers = torch.cat([torch.load(f'/hpcwork/um106329/june_21/scalers_{v}_with_default_{default}.pt') for v in range(67)])
     
     # scalers are computed without defaulted values, but applied to all values
     if default == 999:
         for i in range(0,67): # do not compute scalers with default values, which were set to -999
             #scaler = StandardScaler().fit(train_inputs[:,i][train_inputs[:,i]!=-999].reshape(-1,1))
-            scaler = scalers[i]
+            scaler = torch.load(f'/hpcwork/um106329/june_21/scaler_{i}_with_default_{default}.pt')
             norm_train_inputs[:,i][train_inputs[:,i]!=-999]   = torch.Tensor(scaler.transform(train_inputs[:,i][train_inputs[:,i]!=-999].reshape(-1,1)).reshape(1,-1))
             norm_val_inputs[:,i][val_inputs[:,i]!=-999]	  = torch.Tensor(scaler.transform(val_inputs[:,i][val_inputs[:,i]!=-999].reshape(-1,1)).reshape(1,-1))
             norm_test_inputs[:,i][test_inputs[:,i]!=-999]     = torch.Tensor(scaler.transform(test_inputs[:,i][test_inputs[:,i]!=-999].reshape(-1,1)).reshape(1,-1))
@@ -228,7 +232,7 @@ def preprocess(dataset, DeepCSV_dataset, s):
     else:
         for i in range(0,67): # do not compute scalers with default values, which were set to minima-default
             #scaler = StandardScaler().fit(train_inputs[:,i][train_inputs[:,i]!=defaults[i]].reshape(-1,1))
-            scaler = scalers[i]
+            scaler = torch.load(f'/hpcwork/um106329/june_21/scaler_{i}_with_default_{default}.pt')
             norm_train_inputs[:,i]   = torch.Tensor(scaler.transform(train_inputs[:,i].reshape(-1,1)).reshape(1,-1))
             norm_val_inputs[:,i]       = torch.Tensor(scaler.transform(val_inputs[:,i].reshape(-1,1)).reshape(1,-1))
             norm_test_inputs[:,i]     = torch.Tensor(scaler.transform(test_inputs[:,i].reshape(-1,1)).reshape(1,-1))
@@ -255,7 +259,7 @@ def preprocess(dataset, DeepCSV_dataset, s):
     del val_targets
     del test_targets
     del scaler
-    del scalers
+    #del scalers
     del trainset
     del testset
     del valset
@@ -264,9 +268,14 @@ def preprocess(dataset, DeepCSV_dataset, s):
 if prepstep == 'calc_scalers':
     # get the 67 scalers, computed from the full training set (meaning: for each input, only one scaler for all files together;
     # but splitting up calculation per variable ensures running on interactive nodes)
-    for v in range(startvar,endvar+1):
-        scaler = calc_scalers_from_full_training_sample(v)
-        torch.save(scaler, f'/hpcwork/um106329/june_21/scaler_{v}_with_default_{default}.pt')
+    #for v in range(startvar,endvar+1):
+    #    scaler = calc_scalers_from_full_training_sample(v)
+    #    torch.save(scaler, f'/hpcwork/um106329/june_21/scaler_{v}_with_default_{default}.pt')
+    # with this third version, the calculation itself does not happen in the loop, but for a set of variables simultaneously
+    # only storing the scaler per variable separately needs the loop, so everything should be much faster (e.g. loading and splitting the data)
+    currentscalers = calc_scalers_from_full_training_sample(startvar,endvar)
+    for v in range(endvar+1-startvar):
+        torch.save(currentscalers[v], f'/hpcwork/um106329/june_21/scaler_{startvar+v}_with_default_{default}.pt')
 # a 'scaler' consists of mu and sigma, which is in the following applied to train, val, test)
 else:
     for s in range(NUM_DATASETS): #range(1,49):
