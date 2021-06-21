@@ -28,7 +28,6 @@ device = torch.device("cpu")
 
 #This is just some plot styling
 plt.style.use(hep.cms.style.ROOT)
-colorcode = ['firebrick','magenta','cyan','darkgreen']
 
 plt.ioff()
 
@@ -85,19 +84,20 @@ print(f'Evaluate training at epoch {at_epoch}')
 print(f'With weighting method {weighting_method}')
 
 
+colorcode = ['firebrick','magenta','cyan','darkgreen']
+colorcode_2 = ['#DA7479','#C89FD4','#63D8F1','#7DFDB4']  # from http://tristen.ca/hcl-picker/#/hlc/4/1/DA7479/7DFDB4
 wm_def_text = {'_noweighting': 'No weighting', 
-               '_ptetaflavloss' : 'Loss weighting',
-               '_flatptetaflavloss' : 'Loss weighting (Flat)',
-               '_ptetaflavloss_focalloss' : 'Loss weighting (Focal Loss)', 
-               '_flatptetaflavloss_focalloss' : 'Loss weighting (Flat, Focal Loss)'
+               '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
+               '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
+               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
+               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)'
               }
-wm_def_color = {'_noweighting': 'yellow', 
-               '_ptetaflavloss' : 'orange',
-               '_flatptetaflavloss' : 'brown',
-               '_ptetaflavloss_focalloss' : 'cyan', 
-               '_flatptetaflavloss_focalloss' : 'blue'
+wm_def_color = {'_noweighting': '#92638C', 
+               '_ptetaflavloss' : '#F06644',
+               '_flatptetaflavloss' : '#7AC7A3',
+               '_ptetaflavloss_focalloss' : '#FEC55C', 
+               '_flatptetaflavloss_focalloss' : '#4BC2D8'
               }
-
 # 51 bin edges betweeen 0 and 1 --> 50 bins of width 0.02, plus two additional bins at -0.05 and -0.025, as well as at 1.025 and 1.05
 # in total: 54 bins, 55 bin edges
 # ensures that there are bin edges at 0 and 1 ('exactly') with the option to plot DeepCSV defaults close to the other values
@@ -151,506 +151,93 @@ DeepCSV_testset[:,1][DeepCSV_testset[:,1] < 0] = -0.045
 DeepCSV_testset[:,2][DeepCSV_testset[:,2] < 0] = -0.045
 DeepCSV_testset[:,3][DeepCSV_testset[:,3] < 0] = -0.045
 # and if for whatever reason there are values larger than 1, this could also not be interpreted as probability
-DeepCSV_testset[:,0][DeepCSV_testset[:,0] > 1] = +0.045
-DeepCSV_testset[:,1][DeepCSV_testset[:,1] > 1] = +0.045
-DeepCSV_testset[:,2][DeepCSV_testset[:,2] > 1] = +0.045
-DeepCSV_testset[:,3][DeepCSV_testset[:,3] > 1] = +0.045
+#DeepCSV_testset[:,0][DeepCSV_testset[:,0] > 1] = +0.99999
+#DeepCSV_testset[:,1][DeepCSV_testset[:,1] > 1] = +0.99999
+#DeepCSV_testset[:,2][DeepCSV_testset[:,2] > 1] = +0.99999
+#DeepCSV_testset[:,3][DeepCSV_testset[:,3] > 1] = +0.99999
 print('DeepCSV test done')
 
 jetFlavour = test_targets+1
 
 
-
-# to be changed or handled with loop over all requested weighting methods / epochs
-
-#do_noweighting   = True if ( weighting_method == '_all' or weighting_method == '_noweighting'   ) else False
-#do_ptetaflavloss = True if ( weighting_method == '_all' or weighting_method == '_ptetaflavloss' ) else False
-#do_flatptetaflavloss = True if ( weighting_method == '_all' or weighting_method == '_flatptetaflavloss' ) else False
-
-
-
-# predictions should only be generated for the requested w.m. and epochs, the model is actually the same every time, just the checkpoint that gets loaded differs.
-# this is also currently much too complicated, with separate handling for every possible combination of w.m. - should instead loop over all checkpoints that
-# were requested when filling histograms.
-# For the per epoch evaluation with KS test: also use a loop, but only for one weighting method then.
-
-'''
-
-    Predictions: Without weighting
+def calc_BvL(predictions):
+    #matching_targets = test_targets[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==4)]
+    #matching_predictions = predictions[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==4)]
+    #matching_DeepCSV = DeepCSV_testset[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==4)]
+    matching_targets = test_targets
+    matching_predictions = predictions
+    matching_DeepCSV = DeepCSV_testset
     
-'''
-'''
-if do_noweighting:
-    model = nn.Sequential(nn.Linear(67, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Linear(100, 4),
-                          nn.Softmax(dim=1))
-
-
-
-    checkpoint = torch.load(f'/hpcwork/um106329/june_21/saved_models/_noweighting_{NUM_DATASETS}_{default}_{n_samples}/model_{at_epoch}_epochs_v10_GPU_weighted_noweighting_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
-    model.load_state_dict(checkpoint["model_state_dict"])
-
-    model.to(device)
-
-
-
-
-    #evaluate network on inputs
-    model.eval()
-    predictions_as_is = model(test_inputs).detach().numpy()
-
-    # to find out if the values are in realistic bounds between 0 and 1, for debugging if needed
+    #matching_DeepCSV_targets = matching_targets[((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
+    matching_DeepCSV = np.where(np.tile(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1), (4,1)).transpose(), matching_DeepCSV, (-1.0)*np.ones((len(matching_targets),4)))
+    matching_predictions = np.where(np.tile((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3] != 0), (4,1)).transpose(), matching_predictions, (-1.0)*np.ones((len(matching_targets),4)))
     
-    #hist, bin_edges = np.histogram(predictions_as_is[:,0],bins=20)
-    #print('Flavour b predictions: bin_edges and histogram')
-    #print(bin_edges)
-    #print(hist)
-    #del hist
-    #del bin_edges
-    #gc.collect()
-    #hist, bin_edges = np.histogram(predictions_as_is[:,1],bins=20)
-    #print('Flavour bb predictions: bin_edges and histogram')
-    #print(bin_edges)
-    #print(hist)
-    #del hist
-    #del bin_edges
-    #gc.collect()
-    #hist, bin_edges = np.histogram(predictions_as_is[:,2],bins=20)
-    #print('Flavour c predictions: bin_edges and histogram')
-    #print(bin_edges)
-    #print(hist)
-    #del hist
-    #del bin_edges
-    #gc.collect()
-    #hist, bin_edges = np.histogram(predictions_as_is[:,3],bins=20)
-    #print('Flavour udsg predictions: bin_edges and histogram')
-    #print(bin_edges)
-    #print(hist)
-    #del hist
-    #del bin_edges
-    #gc.collect()
-
-
-    #print(np.unique(predictions_as_is))
-    #predictions_as_is[:,0][predictions_as_is[:,0] > 1.] = 0.999999
-    #predictions_as_is[:,1][predictions_as_is[:,1] > 1.] = 0.999999
-    #predictions_as_is[:,2][predictions_as_is[:,2] > 1.] = 0.999999
-    #predictions_as_is[:,3][predictions_as_is[:,3] > 1.] = 0.999999
-    #predictions_as_is[:,0][predictions_as_is[:,0] < 0.] = 0.000001
-    #predictions_as_is[:,1][predictions_as_is[:,1] < 0.] = 0.000001
-    #predictions_as_is[:,2][predictions_as_is[:,2] < 0.] = 0.000001
-    #predictions_as_is[:,3][predictions_as_is[:,3] < 0.] = 0.000001
-    #print(np.unique(predictions_as_is))
-
-
-    #hist, bin_edges = np.histogram(predictions_as_is[:,0],bins=20)
-    #print('Flavour b predictions: bin_edges and histogram')
-    #print(bin_edges)
-    #print(hist)
-    #del hist
-    #del bin_edges
-    #gc.collect()
-    #hist, bin_edges = np.histogram(predictions_as_is[:,1],bins=20)
-    #print('Flavour bb predictions: bin_edges and histogram')
-    #print(bin_edges)
-    #print(hist)
-    #del hist
-    #del bin_edges
-    #gc.collect()
-    #hist, bin_edges = np.histogram(predictions_as_is[:,2],bins=20)
-    #print('Flavour c predictions: bin_edges and histogram')
-    #print(bin_edges)
-    #print(hist)
-    #del hist
-    #del bin_edges
-    #gc.collect()
-    #hist, bin_edges = np.histogram(predictions_as_is[:,3],bins=20)
-    #print('Flavour udsg predictions: bin_edges and histogram')
-    #print(bin_edges)
-    #print(hist)
-    #del hist
-    #del bin_edges
-    #gc.collect()
-
-
-    #sys.exit()
+    custom_BvL = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,0]+matching_predictions[:,1])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]), (-0.045))*np.ones(len(matching_targets))
     
-    print('predictions without weighting done')
-
-    mostprob = np.argmax(predictions_as_is, axis=-1)
-    cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
-    print(cfm)
-    with open(f'/home/um106329/aisafety/june_21/evaluate/confusion_matrices/weighting_method_noweighting_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
-        np.save(f, cfm)
-'''
-
-'''
-
-    Predictions: With new weighting method
+    DeepCSV_BvL = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,0]+matching_DeepCSV[:,1])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]), (-0.045))*np.ones(len(matching_targets))
     
-'''
-'''
-if do_ptetaflavloss:
-    model = nn.Sequential(nn.Linear(67, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Linear(100, 4),
-                          nn.Softmax(dim=1))
+    return custom_BvL, DeepCSV_BvL
+
+def calc_BvC(predictions):
+    #matching_targets = test_targets[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==3)]
+    #matching_predictions = predictions[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==3)]
+    #matching_DeepCSV = DeepCSV_testset[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==3)]
+    matching_targets = test_targets
+    matching_predictions = predictions
+    matching_DeepCSV = DeepCSV_testset
+    
+    #matching_DeepCSV_targets = matching_targets[((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
+    matching_DeepCSV = np.where(np.tile(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1), (4,1)).transpose(), matching_DeepCSV, (-1.0)*np.ones((len(matching_targets),4)))
+    matching_predictions = np.where(np.tile((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2] != 0) , (4,1)).transpose(), matching_predictions, (-1.0)*np.ones((len(matching_targets),4)))
+    
+    custom_BvC = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,0]+matching_predictions[:,1])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]), (-0.045))*np.ones(len(matching_targets))
+    
+    DeepCSV_BvC = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,0]+matching_DeepCSV[:,1])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]), (-0.045))*np.ones(len(matching_targets))
+    
+    return custom_BvC, DeepCSV_BvC
+    
+def calc_CvB(predictions):
+    #matching_targets = test_targets[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==3)]
+    #matching_predictions = predictions[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==3)]
+    #matching_DeepCSV = DeepCSV_testset[(jetFlavour==1) | (jetFlavour==2) | (jetFlavour==3)]
+    matching_targets = test_targets
+    matching_predictions = predictions
+    matching_DeepCSV = DeepCSV_testset
+    
+    #matching_DeepCSV_targets = matching_targets[((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
+    matching_DeepCSV = np.where(np.tile((((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)), (4,1)).transpose(), matching_DeepCSV, (-1.0)*np.ones((len(matching_targets),4)))
+    matching_predictions = np.where(np.tile((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2] != 0), (4,1)).transpose(), matching_predictions, (-1.0)*np.ones((len(matching_targets),4)))
+    
+    custom_CvB = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,2])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]), (-0.045))*np.ones(len(matching_targets))
+    
+    DeepCSV_CvB = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,2])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]), (-0.045))*np.ones(len(matching_targets))
+    
+    return custom_CvB, DeepCSV_CvB
+    
+def calc_CvL(predictions):
+    #matching_targets = test_targets[(jetFlavour==3) | (jetFlavour==4)]
+    #matching_predictions = predictions[(jetFlavour==3) | (jetFlavour==4)]
+    #matching_DeepCSV = DeepCSV_testset[(jetFlavour==3) | (jetFlavour==4)]
+    matching_targets = test_targets
+    matching_predictions = predictions
+    matching_DeepCSV = DeepCSV_testset
+    
+    #matching_DeepCSV_targets = matching_targets[((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
+    matching_DeepCSV = np.where(np.tile((((matching_DeepCSV[:,2]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)), (4,1)).transpose(), matching_DeepCSV, (-1.0)*np.ones((len(matching_targets),4)))
+    matching_predictions = np.where(np.tile((matching_predictions[:,2]+matching_predictions[:,3] != 0), (4,1)).transpose(), matching_predictions, (-1.0)*np.ones((len(matching_targets),4)))
+    
+    custom_CvL = np.where(((matching_predictions[:,2]+matching_predictions[:,3]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,2])/(matching_predictions[:,2]+matching_predictions[:,3]), (-0.045))*np.ones(len(matching_targets))
+    
+    DeepCSV_CvL = np.where(((matching_DeepCSV[:,2]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,2])/(matching_DeepCSV[:,2]+matching_DeepCSV[:,3]), (-0.045))*np.ones(len(matching_targets))
+    
+    return custom_CvL, DeepCSV_CvL
 
 
 
-    checkpoint = torch.load(f'/hpcwork/um106329/june_21/saved_models/_ptetaflavloss{fl_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{at_epoch}_epochs_v10_GPU_weighted_ptetaflavloss{fl_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
-    model.load_state_dict(checkpoint["model_state_dict"])
-
-    model.to(device)
-
-    #evaluate network on inputs
-    model.eval()
-    predictions_new = model(test_inputs).detach().numpy()
-    
-    #print(np.unique(predictions_new))
-    #predictions_new[:,0][predictions_new[:,0] > 1.] = 0.999999
-    #predictions_new[:,1][predictions_new[:,1] > 1.] = 0.999999
-    #predictions_new[:,2][predictions_new[:,2] > 1.] = 0.999999
-    #predictions_new[:,3][predictions_new[:,3] > 1.] = 0.999999
-    #predictions_new[:,0][predictions_new[:,0] < 0.] = 0.000001
-    #predictions_new[:,1][predictions_new[:,1] < 0.] = 0.000001
-    #predictions_new[:,2][predictions_new[:,2] < 0.] = 0.000001
-    #predictions_new[:,3][predictions_new[:,3] < 0.] = 0.000001
-    #print(np.unique(predictions_new))
-    
-
-    print('predictions with loss weighting done')
-
-
-    #sys.exit()
-
-
-    mostprob = np.argmax(predictions_new, axis=-1)
-    cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
-    print(cfm)
-    with open(f'/home/um106329/aisafety/june_21/evaluate/confusion_matrices/weighting_method_ptetaflavloss{fl_text}_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
-        np.save(f, cfm)
-'''
-'''
-
-    #Predictions: With new weighting method FLAT
-    
-'''
-'''
-if do_flatptetaflavloss:
-    model = nn.Sequential(nn.Linear(67, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Dropout(0.1),
-                          nn.Linear(100, 100),
-                          nn.ReLU(),
-                          nn.Linear(100, 4),
-                          nn.Softmax(dim=1))
 
 
 
-    checkpoint = torch.load(f'/hpcwork/um106329/june_21/saved_models/_flatptetaflavloss{fl_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{at_epoch}_epochs_v10_GPU_weighted_flatptetaflavloss{fl_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt', map_location=torch.device(device))
-    model.load_state_dict(checkpoint["model_state_dict"])
 
-    model.to(device)
-
-    #evaluate network on inputs
-    model.eval()
-    predictions_new_flat = model(test_inputs).detach().numpy()
-    
-    #print(np.unique(predictions_new_flat))
-    #predictions_new_flat[:,0][predictions_new_flat[:,0] > 1.] = 0.999999
-    #predictions_new_flat[:,1][predictions_new_flat[:,1] > 1.] = 0.999999
-    #predictions_new_flat[:,2][predictions_new_flat[:,2] > 1.] = 0.999999
-    #predictions_new_flat[:,3][predictions_new_flat[:,3] > 1.] = 0.999999
-    #predictions_new_flat[:,0][predictions_new_flat[:,0] < 0.] = 0.000001
-    #predictions_new_flat[:,1][predictions_new_flat[:,1] < 0.] = 0.000001
-    #predictions_new_flat[:,2][predictions_new_flat[:,2] < 0.] = 0.000001
-    #predictions_new_flat[:,3][predictions_new_flat[:,3] < 0.] = 0.000001
-    #print(np.unique(predictions_new_flat))
-    
-
-    print('predictions with loss weighting done')
-
-
-    #sys.exit()
-
-
-    mostprob = np.argmax(predictions_new_flat, axis=-1)
-    cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
-    print(cfm)
-    with open(f'/home/um106329/aisafety/june_21/evaluate/confusion_matrices/weighting_method_flatptetaflavloss{fl_text}_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
-        np.save(f, cfm)
-'''        
-        
-def sum_hist():
-    plt.ioff()    
-    classifierHist = hist.Hist("Jets",
-                            hist.Cat("sample","sample name"),
-                            hist.Cat("flavour","flavour of the jet"),
-                            hist.Bin("probb","P(b)",50,-0.05,1.05),
-                            hist.Bin("probbb","P(bb)",50,-0.05,1.05),
-                            hist.Bin("probc","P(c)",50,-0.05,1.05),
-                            hist.Bin("probudsg","P(udsg)",50,-0.05,1.05),
-                         )
-
-   
-    classifierHist.fill(sample="DeepCSV",flavour='b-jets',probb=DeepCSV_testset[:,0][jetFlavour==1],probbb=DeepCSV_testset[:,1][jetFlavour==1],probc=DeepCSV_testset[:,2][jetFlavour==1],probudsg=DeepCSV_testset[:,3][jetFlavour==1])
-    classifierHist.fill(sample="DeepCSV",flavour='bb-jets',probb=DeepCSV_testset[:,0][jetFlavour==2],probbb=DeepCSV_testset[:,1][jetFlavour==2],probc=DeepCSV_testset[:,2][jetFlavour==2],probudsg=DeepCSV_testset[:,3][jetFlavour==2])
-    classifierHist.fill(sample="DeepCSV",flavour='c-jets',probb=DeepCSV_testset[:,0][jetFlavour==3],probbb=DeepCSV_testset[:,1][jetFlavour==3],probc=DeepCSV_testset[:,2][jetFlavour==3],probudsg=DeepCSV_testset[:,3][jetFlavour==3])
-    classifierHist.fill(sample="DeepCSV",flavour='udsg-jets',probb=DeepCSV_testset[:,0][jetFlavour==4],probbb=DeepCSV_testset[:,1][jetFlavour==4],probc=DeepCSV_testset[:,2][jetFlavour==4],probudsg=DeepCSV_testset[:,3][jetFlavour==4])
-    
-    if do_noweighting:
-        classifierHist.fill(sample="No weighting",flavour='b-jets',probb=predictions_as_is[:,0][jetFlavour==1],probbb=predictions_as_is[:,1][jetFlavour==1],probc=predictions_as_is[:,2][jetFlavour==1],probudsg=predictions_as_is[:,3][jetFlavour==1])
-        classifierHist.fill(sample="No weighting",flavour='bb-jets',probb=predictions_as_is[:,0][jetFlavour==2],probbb=predictions_as_is[:,1][jetFlavour==2],probc=predictions_as_is[:,2][jetFlavour==2],probudsg=predictions_as_is[:,3][jetFlavour==2])
-        classifierHist.fill(sample="No weighting",flavour='c-jets',probb=predictions_as_is[:,0][jetFlavour==3],probbb=predictions_as_is[:,1][jetFlavour==3],probc=predictions_as_is[:,2][jetFlavour==3],probudsg=predictions_as_is[:,3][jetFlavour==3])
-        classifierHist.fill(sample="No weighting",flavour='udsg-jets',probb=predictions_as_is[:,0][jetFlavour==4],probbb=predictions_as_is[:,1][jetFlavour==4],probc=predictions_as_is[:,2][jetFlavour==4],probudsg=predictions_as_is[:,3][jetFlavour==4])
-    
-    if do_ptetaflavloss:
-        classifierHist.fill(sample="Loss weighting",flavour='b-jets',probb=predictions_new[:,0][jetFlavour==1],probbb=predictions_new[:,1][jetFlavour==1],probc=predictions_new[:,2][jetFlavour==1],probudsg=predictions_new[:,3][jetFlavour==1])
-        classifierHist.fill(sample="Loss weighting",flavour='bb-jets',probb=predictions_new[:,0][jetFlavour==2],probbb=predictions_new[:,1][jetFlavour==2],probc=predictions_new[:,2][jetFlavour==2],probudsg=predictions_new[:,3][jetFlavour==2])
-        classifierHist.fill(sample="Loss weighting",flavour='c-jets',probb=predictions_new[:,0][jetFlavour==3],probbb=predictions_new[:,1][jetFlavour==3],probc=predictions_new[:,2][jetFlavour==3],probudsg=predictions_new[:,3][jetFlavour==3])
-        classifierHist.fill(sample="Loss weighting",flavour='udsg-jets',probb=predictions_new[:,0][jetFlavour==4],probbb=predictions_new[:,1][jetFlavour==4],probc=predictions_new[:,2][jetFlavour==4],probudsg=predictions_new[:,3][jetFlavour==4])
-    if do_flatptetaflavloss:
-        classifierHist.fill(sample="Loss weighting (flat)",flavour='b-jets',probb=predictions_new_flat[:,0][jetFlavour==1],probbb=predictions_new_flat[:,1][jetFlavour==1],probc=predictions_new_flat[:,2][jetFlavour==1],probudsg=predictions_new_flat[:,3][jetFlavour==1])
-        classifierHist.fill(sample="Loss weighting (flat)",flavour='bb-jets',probb=predictions_new_flat[:,0][jetFlavour==2],probbb=predictions_new_flat[:,1][jetFlavour==2],probc=predictions_new_flat[:,2][jetFlavour==2],probudsg=predictions_new_flat[:,3][jetFlavour==2])
-        classifierHist.fill(sample="Loss weighting (flat)",flavour='c-jets',probb=predictions_new_flat[:,0][jetFlavour==3],probbb=predictions_new_flat[:,1][jetFlavour==3],probc=predictions_new_flat[:,2][jetFlavour==3],probudsg=predictions_new_flat[:,3][jetFlavour==3])
-        classifierHist.fill(sample="Loss weighting (flat)",flavour='udsg-jets',probb=predictions_new_flat[:,0][jetFlavour==4],probbb=predictions_new_flat[:,1][jetFlavour==4],probc=predictions_new_flat[:,2][jetFlavour==4],probudsg=predictions_new_flat[:,3][jetFlavour==4])
-
-
-    # https://github.com/CoffeaTeam/coffea/blob/master/coffea/hist/hist_tools.py#L1125 to understand what '.sum' does
-    
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
-    #plt.subplots_adjust(wspace=0.4)
-    dcsv1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.7,'facecolor':'red'})
-    dcsv2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.7,'facecolor':'red'})
-    dcsv3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'red'})
-    dcsv4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'red'})
-    
-    #max1, max2, max3, max4 = dcsv1.get_ylim()[1], dcsv2.get_ylim()[1], dcsv3.get_ylim()[1], dcsv4.get_ylim()[1]
-    if do_noweighting:
-        no_w1 = hist.plot1d(classifierHist['No weighting'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':'blue','linewidth':3})
-        no_w2 = hist.plot1d(classifierHist['No weighting'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'blue','linewidth':3})
-        no_w3 = hist.plot1d(classifierHist['No weighting'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'blue','linewidth':3})
-        no_w4 = hist.plot1d(classifierHist['No weighting'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':'blue','linewidth':3})
-    
-    #max1, max2, max3, max4 = max(max1,no_w1.get_ylim()[1]), max(max2,no_w2.get_ylim()[1]), max(max3,no_w3.get_ylim()[1]), max(max4,no_w4.get_ylim()[1])
-    if do_ptetaflavloss:
-        loss_w1 = hist.plot1d(classifierHist['Loss weighting'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':'green','linewidth':3})
-        loss_w2 = hist.plot1d(classifierHist['Loss weighting'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'green','linewidth':3})
-        loss_w3 = hist.plot1d(classifierHist['Loss weighting'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'green','linewidth':3})
-        loss_w4 = hist.plot1d(classifierHist['Loss weighting'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':'green','linewidth':3})
-    if do_flatptetaflavloss:
-        loss_flat_w1 = hist.plot1d(classifierHist['Loss weighting (flat)'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'color':'green','linewidth':3})
-        loss_flat_w2 = hist.plot1d(classifierHist['Loss weighting (flat)'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':'green','linewidth':3})
-        loss_flat_w3 = hist.plot1d(classifierHist['Loss weighting (flat)'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':'green','linewidth':3})
-        loss_flat_w4 = hist.plot1d(classifierHist['Loss weighting (flat)'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':'green','linewidth':3})    
-    
-    
-    ax2.legend(loc='upper right',title='Outputs',ncol=1)
-    ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
-    
-    # just leaving all those trials to get correct y-limits here, as what I did in the end finally worked with pure matplotlib functions...
-    
-    '''
-    ax1_y_limit = max(max(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg').values()),
-                  max(classifierHist['No weighting'].sum('flavour','probbb','probc','probudsg').values()),
-                  max(classifierHist['Loss weighting'].sum('flavour','probbb','probc','probudsg').values())) 
-    ax2_y_limit = max(max(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg').values()),
-                  max(classifierHist['No weighting'].sum('flavour','probb','probc','probudsg').values()),
-                  max(classifierHist['Loss weighting'].sum('flavour','probb','probc','probudsg').values())) 
-    ax3_y_limit = max(max(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg').values()),
-                  max(classifierHist['No weighting'].sum('flavour','probb','probbb','probudsg').values()),
-                  max(classifierHist['Loss weighting'].sum('flavour','probb','probbb','probudsg').values())) 
-    ax4_y_limit = max(max(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc').values()),
-                  max(classifierHist['No weighting'].sum('flavour','probb','probbb','probc').values()),
-                  max(classifierHist['Loss weighting'].sum('flavour','probb','probbb','probc').values())) 
-    '''
-    #ax1_y_limit, ax2_y_limit, ax3_y_limit, ax4_y_limit = max(max1,loss_w1.get_ylim()[1]), max(max2,loss_w2.get_ylim()[1]), max(max3,loss_w3.get_ylim()[1]), max(max4,loss_w4.get_ylim()[1])
-    #print(ax1_y_limit)
-    #print(np.max(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg').values().values(),classifierHist['No weighting'].sum('flavour','probbb','probc','probudsg').values().values(),classifierHist['Loss weighting'].sum('flavour','probbb','probc','probudsg').values().values()))
-    #print(np.max(classifierHist['No weighting'].sum('flavour','probbb','probc','probudsg').values()['No weighting']))
-    '''
-    # recompute the ax.dataLim
-    ax1.relim()
-    ax2.relim()
-    ax3.relim()
-    ax4.relim()
-    # update ax.viewLim using the new dataLim
-    ax1.autoscale_view(True,True,True)
-    ax2.autoscale_view(True,True,True)
-    ax3.autoscale_view(True,True,True)
-    ax4.autoscale_view(True,True,True)
-    
-    ax1.set_ymargin(0.1)
-    ax2.set_ymargin(0.1)
-    ax3.set_ymargin(0.1)
-    ax4.set_ymargin(0.1)
-    '''
-    
-    # to have the y-limit adapt to the maximum of EACH bin or overlay and scale automatically, without having to define the maximum myself
-    
-    ax1.set_ylim(bottom=0, auto=True)
-    ax2.set_ylim(bottom=0, auto=True)
-    ax3.set_ylim(bottom=0, auto=True)
-    ax4.set_ylim(bottom=0, auto=True)
-    
-    ax1.set_yscale('log')
-    ax2.set_yscale('log')
-    #ax3.set_yscale('log')
-    #ax4.set_yscale('log')
-    
-    ax1.autoscale(True)
-    ax2.autoscale(True)
-    ax3.autoscale(True)
-    ax4.autoscale(True)
-    
-    # this is to make sure also for the smaller number of jets there will be scientific notation on the y-axis (this ensures the width of the subfigures together with labels will be the same
-    # for both 49 and 10 files, so they can be compared, at least qualitatively and have the same aspect ratios etc.)
-    
-    #ax1.ticklabel_format(scilimits=(-5,5))
-    #ax2.ticklabel_format(scilimits=(-5,5))
-    ax3.ticklabel_format(scilimits=(-5,5))
-    ax4.ticklabel_format(scilimits=(-5,5))
-    
-    fig.suptitle(f'Classifier and DeepCSV outputs\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-    fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/{weighting_method}{fl_text}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=300)
-    gc.collect()
-    plt.show(block=False)
-    time.sleep(5)
-    plt.clf()
-    plt.cla()
-    plt.close('all')
-    gc.collect(2)
-
-
-    
-def flavsplit_hist(wm):
-    plt.ioff()
-    if wm == '_noweighting':
-        global predictions_as_is
-        predictions = predictions_as_is
-        del predictions_as_is
-        gc.collect()
-        method = 'No weighting applied'
-    elif wm == '_ptetaflavloss':
-        global predictions_new
-        predictions = predictions_new
-        del predictions_new
-        gc.collect()
-        method = 'Loss weighting'
-    else:
-        global predictions_new_flat
-        predictions = predictions_new_flat
-        del predictions_new_flat
-        gc.collect()
-        method = 'Loss weighting (flat)'    
-    classifierHist = hist.Hist("Jets",
-                            hist.Cat("sample","sample name"),
-                            hist.Cat("flavour","flavour of the jet"),
-                            hist.Bin("probb","P(b)",50,-0.05,1.05),
-                            hist.Bin("probbb","P(bb)",50,-0.05,1.05),
-                            hist.Bin("probc","P(c)",50,-0.05,1.05),
-                            hist.Bin("probudsg","P(udsg)",50,-0.05,1.05),
-                         )
-
-    classifierHist.fill(sample="Classifier",flavour='b-jets',probb=predictions[:,0][jetFlavour==1],probbb=predictions[:,1][jetFlavour==1],probc=predictions[:,2][jetFlavour==1],probudsg=predictions[:,3][jetFlavour==1])
-    classifierHist.fill(sample="Classifier",flavour='bb-jets',probb=predictions[:,0][jetFlavour==2],probbb=predictions[:,1][jetFlavour==2],probc=predictions[:,2][jetFlavour==2],probudsg=predictions[:,3][jetFlavour==2])
-    classifierHist.fill(sample="Classifier",flavour='c-jets',probb=predictions[:,0][jetFlavour==3],probbb=predictions[:,1][jetFlavour==3],probc=predictions[:,2][jetFlavour==3],probudsg=predictions[:,3][jetFlavour==3])
-    classifierHist.fill(sample="Classifier",flavour='udsg-jets',probb=predictions[:,0][jetFlavour==4],probbb=predictions[:,1][jetFlavour==4],probc=predictions[:,2][jetFlavour==4],probudsg=predictions[:,3][jetFlavour==4])
-    classifierHist.fill(sample="DeepCSV",flavour='b-jets',probb=DeepCSV_testset[:,0][jetFlavour==1],probbb=DeepCSV_testset[:,1][jetFlavour==1],probc=DeepCSV_testset[:,2][jetFlavour==1],probudsg=DeepCSV_testset[:,3][jetFlavour==1])
-    classifierHist.fill(sample="DeepCSV",flavour='bb-jets',probb=DeepCSV_testset[:,0][jetFlavour==2],probbb=DeepCSV_testset[:,1][jetFlavour==2],probc=DeepCSV_testset[:,2][jetFlavour==2],probudsg=DeepCSV_testset[:,3][jetFlavour==2])
-    classifierHist.fill(sample="DeepCSV",flavour='c-jets',probb=DeepCSV_testset[:,0][jetFlavour==3],probbb=DeepCSV_testset[:,1][jetFlavour==3],probc=DeepCSV_testset[:,2][jetFlavour==3],probudsg=DeepCSV_testset[:,3][jetFlavour==3])
-    classifierHist.fill(sample="DeepCSV",flavour='udsg-jets',probb=DeepCSV_testset[:,0][jetFlavour==4],probbb=DeepCSV_testset[:,1][jetFlavour==4],probc=DeepCSV_testset[:,2][jetFlavour==4],probudsg=DeepCSV_testset[:,3][jetFlavour==4])
-
-
-    
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
-    #plt.subplots_adjust(wspace=0.4)
-    hist.plot1d(classifierHist['Classifier'].sum('sample','probbb','probc','probudsg'),overlay='flavour',ax=ax1,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    hist.plot1d(classifierHist['Classifier'].sum('sample','probb','probc','probudsg'),overlay='flavour',ax=ax2,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    hist.plot1d(classifierHist['Classifier'].sum('sample','probb','probbb','probudsg'),overlay='flavour',ax=ax3,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    hist.plot1d(classifierHist['Classifier'].sum('sample','probb','probbb','probc'),overlay='flavour',ax=ax4,clear=False,line_opts={'color':colorcode,'linewidth':3})
-    hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
-    hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
-    hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
-    hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
-    ax2.legend(loc='upper right',title='Outputs',ncol=1)
-    ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
-    
-    ax1.set_ylim(bottom=0, auto=True)
-    ax2.set_ylim(bottom=0, auto=True)
-    ax3.set_ylim(bottom=0, auto=True)
-    ax4.set_ylim(bottom=0, auto=True)
-    
-    ax1.set_yscale('log')
-    ax2.set_yscale('log')
-    #ax3.set_yscale('log')
-    #ax4.set_yscale('log')
-    
-    ax1.autoscale(True)
-    ax2.autoscale(True)
-    ax3.autoscale(True)
-    ax4.autoscale(True)
-    
-    #ax1.ticklabel_format(scilimits=(-5,5))
-    #ax2.ticklabel_format(scilimits=(-5,5))
-    ax3.ticklabel_format(scilimits=(-5,5))
-    ax4.ticklabel_format(scilimits=(-5,5))
-    
-    fig.suptitle(f'Classifier and DeepCSV outputs, {method}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-    fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/weighting_method{wm}{fl_text}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=300)
-    gc.collect()
-    plt.show(block=False)
-    time.sleep(5)
-    plt.clf()
-    plt.cla()
-    plt.close('all')
-    gc.collect(2)
-    
-'''    
-if weighting_method == '_all':
-    sum_hist()
-    flavsplit_hist('_noweighting')
-    flavsplit_hist('_ptetaflavloss')
-    flavsplit_hist('_flatptetaflavloss')
-else:
-    sum_hist()
-    flavsplit_hist(weighting_method)
-'''
 # =============================================================================================================================
 #
 #
@@ -1297,14 +884,16 @@ with torch.no_grad():
         model.load_state_dict(checkpoint["model_state_dict"])
 
         predictions = model(test_inputs).detach().numpy()
-
+        
+        wm_text = wm_def_text[weighting_method]
+        #'''
+        
         mostprob = np.argmax(predictions, axis=-1)
         cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
         print(f'epoch {at_epoch}\n',cfm)
         with open(f'/home/um106329/aisafety/june_21/evaluate/confusion_matrices/weighting_method{weighting_method}_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
             np.save(f, cfm)
 
-        wm_text = wm_def_text[weighting_method]
 
         classifierHist = hist.Hist("Jets",
                             hist.Cat("sample","sample name"),
@@ -1313,6 +902,10 @@ with torch.no_grad():
                             hist.Bin("probbb","P(bb)",bins),
                             hist.Bin("probc","P(c)",bins),
                             hist.Bin("probudsg","P(udsg)",bins),
+                            #hist.Bin("bvl","B vs L",bins),
+                            #hist.Bin("bvc","B vs C",bins),
+                            #hist.Bin("cvb","C vs B",bins),
+                            #hist.Bin("cvl","C vs L",bins),
                          )
 
         classifierHist.fill(sample=wm_text,flavour='b-jets',probb=predictions[:,0][jetFlavour==1],probbb=predictions[:,1][jetFlavour==1],probc=predictions[:,2][jetFlavour==1],probudsg=predictions[:,3][jetFlavour==1])
@@ -1324,7 +917,13 @@ with torch.no_grad():
         classifierHist.fill(sample="DeepCSV",flavour='c-jets',probb=DeepCSV_testset[:,0][jetFlavour==3],probbb=DeepCSV_testset[:,1][jetFlavour==3],probc=DeepCSV_testset[:,2][jetFlavour==3],probudsg=DeepCSV_testset[:,3][jetFlavour==3])
         classifierHist.fill(sample="DeepCSV",flavour='udsg-jets',probb=DeepCSV_testset[:,0][jetFlavour==4],probbb=DeepCSV_testset[:,1][jetFlavour==4],probc=DeepCSV_testset[:,2][jetFlavour==4],probudsg=DeepCSV_testset[:,3][jetFlavour==4])
 
-        # split per flavour discriminator shapes
+        
+        # =================================================================================================================
+        # 
+        #                                           Plot outputs (not stacked)
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
+        # split per flavour outputs
 
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
         #plt.subplots_adjust(wspace=0.4)
@@ -1336,7 +935,7 @@ with torch.no_grad():
         dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
-        ax3.legend(loc='upper right',title='Outputs',ncol=1,fontsize=18,title_fontsize=19)
+        ax3.legend(loc='upper right',title=f'Outputs',ncol=1,fontsize=18,title_fontsize=19)
         ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
 
         ax1.set_ylim(bottom=0, auto=True)
@@ -1369,6 +968,12 @@ with torch.no_grad():
         plt.close('all')
         gc.collect(2)
 
+        
+        # =================================================================================================================
+        # 
+        #                                           Plot outputs (stacked)
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
         # stacked discriminator shapes
 
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
@@ -1377,11 +982,11 @@ with torch.no_grad():
         custom_ax2 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
         custom_ax3 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
         custom_ax4 = hist.plot1d(classifierHist[wm_text].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,line_opts={'color':wm_def_color[weighting_method],'linewidth':3})
-        dcsv_ax1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.5,'facecolor':'red'})
-        dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.5,'facecolor':'red'})
-        dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.5,'facecolor':'red'})
-        dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.5,'facecolor':'red'})
-        ax3.legend(loc='upper right',title='Outputs',ncol=1,fontsize=18,title_fontsize=19)
+        dcsv_ax1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,fill_opts={'alpha':.5,'facecolor':'#404040'})
+        dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.5,'facecolor':'#404040'})
+        dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.5,'facecolor':'#404040'})
+        dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.5,'facecolor':'#404040'})
+        ax3.legend(loc='upper right',title=f'Outputs',ncol=1,fontsize=18,title_fontsize=19)
         ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
 
         ax1.set_ylim(bottom=0, auto=True)
@@ -1406,6 +1011,195 @@ with torch.no_grad():
 
         fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        gc.collect()
+        plt.show(block=False)
+        time.sleep(5)
+        plt.clf()
+        plt.cla()
+        plt.close('all')
+        gc.collect(2)
+        
+        # =================================================================================================================
+        # 
+        #                                           Plot outputs (stacked v2)
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
+        # new way to display the stacked histograms
+        
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+        #plt.subplots_adjust(wspace=0.4)
+        custom_ax1 = hist.plot1d(classifierHist[wm_text].sum('sample','probbb','probc','probudsg'),overlay='flavour',ax=ax1,clear=False,fill_opts={'facecolor':colorcode_2,'alpha':1},stack=True)
+        custom_ax2 = hist.plot1d(classifierHist[wm_text].sum('sample','probb','probc','probudsg'),overlay='flavour',ax=ax2,clear=False, fill_opts={'facecolor':colorcode_2,'alpha':1},stack=True)
+        custom_ax3 = hist.plot1d(classifierHist[wm_text].sum('sample','probb','probbb','probudsg'),overlay='flavour',ax=ax3,clear=False,fill_opts={'facecolor':colorcode_2,'alpha':1},stack=True)
+        custom_ax4 = hist.plot1d(classifierHist[wm_text].sum('sample','probb','probbb','probc'),overlay='flavour',ax=ax4,clear=False,   fill_opts={'facecolor':colorcode_2,'alpha':1},stack=True)
+        dcsv_ax1 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probbb','probc','probudsg'),ax=ax1,clear=False,line_opts={'linewidth':1,'color':'black'})
+        dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False, line_opts={'linewidth':1,'color':'black'})
+        dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,line_opts={'linewidth':1,'color':'black'})
+        dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,   line_opts={'linewidth':1,'color':'black'})
+        ax3.legend(loc='upper right',title=f'Outputs',ncol=1,fontsize=18,title_fontsize=19)
+        ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
+
+        ax1.set_ylim(bottom=0, auto=True)
+        ax2.set_ylim(bottom=0, auto=True)
+        ax3.set_ylim(bottom=0, auto=True)
+        ax4.set_ylim(bottom=0, auto=True)
+
+        ax1.set_yscale('log')
+        ax2.set_yscale('log')
+        #ax3.set_yscale('log')
+        #ax4.set_yscale('log')
+
+        ax1.autoscale(True)
+        ax2.autoscale(True)
+        ax3.autoscale(True)
+        ax4.autoscale(True)
+
+        #ax1.ticklabel_format(scilimits=(-5,5))
+        #ax2.ticklabel_format(scilimits=(-5,5))
+        ax3.ticklabel_format(scilimits=(-5,5))
+        ax4.ticklabel_format(scilimits=(-5,5))
+
+        fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/stacked_v2_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        gc.collect()
+        plt.show(block=False)
+        time.sleep(5)
+        plt.clf()
+        plt.cla()
+        plt.close('all')
+        gc.collect(2)
+        
+        
+        
+        
+        
+        del classifierHist
+        gc.collect()
+        
+        #'''
+        
+        # =================================================================================================================
+        # 
+        #                                     Plot discriminator shapes (not stacked)
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
+        
+        custom_BvL, DeepCSV_BvL = calc_BvL(predictions)
+        custom_BvC, DeepCSV_BvC = calc_BvC(predictions)
+        custom_CvB, DeepCSV_CvB = calc_CvB(predictions)
+        custom_CvL, DeepCSV_CvL = calc_CvL(predictions)
+        
+        del predictions
+        gc.collect()
+        
+        discriminatorHist = hist.Hist("Jets",
+                            hist.Cat("sample","sample name"),
+                            hist.Cat("flavour","flavour of the jet"),
+                            #hist.Bin("probb","P(b)",bins),
+                            #hist.Bin("probbb","P(bb)",bins),
+                            #hist.Bin("probc","P(c)",bins),
+                            #hist.Bin("probudsg","P(udsg)",bins),
+                            hist.Bin("bvl","B vs L",bins),
+                            hist.Bin("bvc","B vs C",bins),
+                            hist.Bin("cvb","C vs B",bins),
+                            hist.Bin("cvl","C vs L",bins),
+                         )
+        
+        discriminatorHist.fill(sample=wm_text,flavour='b-jets',bvl=custom_BvL[jetFlavour==1],bvc=custom_BvC[jetFlavour==1],cvb=custom_CvB[jetFlavour==1],cvl=custom_CvL[jetFlavour==1])
+        discriminatorHist.fill(sample=wm_text,flavour='bb-jets',bvl=custom_BvL[jetFlavour==2],bvc=custom_BvC[jetFlavour==2],cvb=custom_CvB[jetFlavour==2],cvl=custom_CvL[jetFlavour==2])
+        discriminatorHist.fill(sample=wm_text,flavour='c-jets',bvl=custom_BvL[jetFlavour==3],bvc=custom_BvC[jetFlavour==3],cvb=custom_CvB[jetFlavour==3],cvl=custom_CvL[jetFlavour==3])
+        discriminatorHist.fill(sample=wm_text,flavour='udsg-jets',bvl=custom_BvL[jetFlavour==4],bvc=custom_BvC[jetFlavour==4],cvb=custom_CvB[jetFlavour==4],cvl=custom_CvL[jetFlavour==4])
+        discriminatorHist.fill(sample="DeepCSV",flavour='b-jets',bvl=DeepCSV_BvL[jetFlavour==1],bvc=DeepCSV_BvC[jetFlavour==1],cvb=DeepCSV_CvB[jetFlavour==1],cvl=DeepCSV_CvL[jetFlavour==1])
+        discriminatorHist.fill(sample="DeepCSV",flavour='bb-jets',bvl=DeepCSV_BvL[jetFlavour==2],bvc=DeepCSV_BvC[jetFlavour==2],cvb=DeepCSV_CvB[jetFlavour==2],cvl=DeepCSV_CvL[jetFlavour==2])
+        discriminatorHist.fill(sample="DeepCSV",flavour='c-jets',bvl=DeepCSV_BvL[jetFlavour==3],bvc=DeepCSV_BvC[jetFlavour==3],cvb=DeepCSV_CvB[jetFlavour==3],cvl=DeepCSV_CvL[jetFlavour==3])
+        discriminatorHist.fill(sample="DeepCSV",flavour='udsg-jets',bvl=DeepCSV_BvL[jetFlavour==4],bvc=DeepCSV_BvC[jetFlavour==4],cvb=DeepCSV_CvB[jetFlavour==4],cvl=DeepCSV_CvL[jetFlavour==4])
+
+
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+        #plt.subplots_adjust(wspace=0.4)
+        custom_ax1 = hist.plot1d(discriminatorHist[wm_text].sum('sample','bvc','cvb','cvl'),overlay='flavour',ax=ax1,clear=False,line_opts={'color':colorcode,'linewidth':3})
+        custom_ax2 = hist.plot1d(discriminatorHist[wm_text].sum('sample','bvl','cvb','cvl'),overlay='flavour',ax=ax2,clear=False,line_opts={'color':colorcode,'linewidth':3})
+        custom_ax3 = hist.plot1d(discriminatorHist[wm_text].sum('sample','bvl','bvc','cvl'),overlay='flavour',ax=ax3,clear=False,line_opts={'color':colorcode,'linewidth':3})
+        custom_ax4 = hist.plot1d(discriminatorHist[wm_text].sum('sample','bvl','bvc','cvb'),overlay='flavour',ax=ax4,clear=False,line_opts={'color':colorcode,'linewidth':3})
+        dcsv_ax1 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvc','cvb','cvl'),ax=ax1,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
+        dcsv_ax2 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','cvb','cvl'),ax=ax2,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
+        dcsv_ax3 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','bvc','cvl'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
+        dcsv_ax4 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','bvc','cvb'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
+        ax1.legend(loc='upper center',title=f'{wm_text}, epoch {at_epoch}',ncol=1,fontsize=17,title_fontsize=17.5)
+        ax3.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
+
+        ax1.set_ylim(bottom=0, auto=True)
+        ax2.set_ylim(bottom=0, auto=True)
+        ax3.set_ylim(bottom=0, auto=True)
+        ax4.set_ylim(bottom=0, auto=True)
+
+        ax1.set_yscale('log')
+        ax2.set_yscale('log')
+        ax3.set_yscale('log')
+        ax4.set_yscale('log')
+
+        ax1.autoscale(True)
+        ax2.autoscale(True)
+        ax3.autoscale(True)
+        ax4.autoscale(True)
+
+        #ax1.ticklabel_format(scilimits=(-5,5))
+        #ax2.ticklabel_format(scilimits=(-5,5))
+        #ax3.ticklabel_format(scilimits=(-5,5))
+        #ax4.ticklabel_format(scilimits=(-5,5))
+
+        #fig.suptitle(f'Classifier and DeepCSV discriminators, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/discriminators_versus_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        gc.collect()
+        plt.show(block=False)
+        time.sleep(5)
+        plt.clf()
+        plt.cla()
+        plt.close('all')
+        gc.collect(2)
+        
+        
+        # =================================================================================================================
+        # 
+        #                                     Plot discriminator shapes (stacked)
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
+        
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+        #plt.subplots_adjust(wspace=0.4)
+        custom_ax1 = hist.plot1d(discriminatorHist[wm_text].sum('sample','bvc','cvb','cvl'),overlay='flavour',ax=ax1,clear=False,fill_opts={'facecolor':colorcode_2,'alpha':1},stack=True)
+        custom_ax2 = hist.plot1d(discriminatorHist[wm_text].sum('sample','bvl','cvb','cvl'),overlay='flavour',ax=ax2,clear=False,fill_opts={'facecolor':colorcode_2,'alpha':1},stack=True)
+        custom_ax3 = hist.plot1d(discriminatorHist[wm_text].sum('sample','bvl','bvc','cvl'),overlay='flavour',ax=ax3,clear=False,fill_opts={'facecolor':colorcode_2,'alpha':1},stack=True)
+        custom_ax4 = hist.plot1d(discriminatorHist[wm_text].sum('sample','bvl','bvc','cvb'),overlay='flavour',ax=ax4,clear=False,fill_opts={'facecolor':colorcode_2,'alpha':1},stack=True)
+        dcsv_ax1 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvc','cvb','cvl'),ax=ax1,clear=False,line_opts={'linewidth':1,'color':'black'})
+        dcsv_ax2 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','cvb','cvl'),ax=ax2,clear=False,line_opts={'linewidth':1,'color':'black'})
+        dcsv_ax3 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','bvc','cvl'),ax=ax3,clear=False,line_opts={'linewidth':1,'color':'black'})
+        dcsv_ax4 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','bvc','cvb'),ax=ax4,clear=False,line_opts={'linewidth':1,'color':'black'})
+        ax1.legend(loc='upper center',title=f'{wm_text}, epoch {at_epoch}',ncol=1,fontsize=17,title_fontsize=17.5)
+        ax3.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
+
+        ax1.set_ylim(bottom=0, auto=True)
+        ax2.set_ylim(bottom=0, auto=True)
+        ax3.set_ylim(bottom=0, auto=True)
+        ax4.set_ylim(bottom=0, auto=True)
+
+        ax1.set_yscale('log')
+        ax2.set_yscale('log')
+        ax3.set_yscale('log')
+        ax4.set_yscale('log')
+
+        ax1.autoscale(True)
+        ax2.autoscale(True)
+        ax3.autoscale(True)
+        ax4.autoscale(True)
+
+        #ax1.ticklabel_format(scilimits=(-5,5))
+        #ax2.ticklabel_format(scilimits=(-5,5))
+        #ax3.ticklabel_format(scilimits=(-5,5))
+        #ax4.ticklabel_format(scilimits=(-5,5))
+
+        #fig.suptitle(f'Classifier and DeepCSV discriminators, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/discriminators_versus_stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
         gc.collect()
         plt.show(block=False)
         time.sleep(5)

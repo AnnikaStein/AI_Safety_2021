@@ -169,7 +169,7 @@ with torch.no_grad():
         
         
         wm_text = wm_def_text[weighting_method]
-        '''
+        #'''
         fig = plt.figure(figsize=[12,12])       
         fpr,tpr,thresholds = metrics.roc_curve(torch.where(test_targets==0, torch.ones(len_test), torch.zeros(len_test)),predictions[:,0])
         plt.plot(fpr,tpr)
@@ -179,7 +179,7 @@ with torch.no_grad():
         plt.plot(fpr,tpr)
         deepcsvauc = metrics.auc(fpr,tpr)
         print(f"auc for b-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
-        plt.legend([f'Classifier: {wm_text},\nAUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],loc='lower right',fontsize=18,title_fontsize=19)
+        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='upper left',fontsize=22,title_fontsize=24)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
         #plt.title(f'ROC b tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
@@ -200,7 +200,7 @@ with torch.no_grad():
         plt.plot(fpr,tpr)
         deepcsvauc = metrics.auc(fpr,tpr)
         print(f"auc for bb-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
-        plt.legend([f'Classifier: {wm_text},\nAUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],loc='lower right',fontsize=18,title_fontsize=19)
+        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='upper left',fontsize=22,title_fontsize=24)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
         #plt.title(f'ROC bb tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
@@ -221,7 +221,7 @@ with torch.no_grad():
         plt.plot(fpr,tpr)
         deepcsvauc = metrics.auc(fpr,tpr)
         print(f"auc for c-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
-        plt.legend([f'Classifier: {wm_text},\nAUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],loc='lower right',fontsize=18,title_fontsize=19)
+        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='upper left',fontsize=22,title_fontsize=24)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
         #plt.title(f'ROC c tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
@@ -246,7 +246,7 @@ with torch.no_grad():
         plt.plot(fpr,tpr)
         deepcsvauc = metrics.auc(fpr,tpr)
         print(f"auc for udsg-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
-        plt.legend([f'Classifier: {wm_text},\nAUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],loc='lower right',fontsize=18,title_fontsize=19)
+        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='upper left',fontsize=22,title_fontsize=24)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
         #plt.title(f'ROC udsg tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
@@ -257,7 +257,7 @@ with torch.no_grad():
         time.sleep(5)
         plt.close('all')
         gc.collect(2)
-        '''
+        #'''
 
 
         '''
@@ -349,7 +349,7 @@ with torch.no_grad():
         #plt.ylim(bottom=1e-3)
         plt.xlim((0,1))
         #plt.yscale('log')
-        plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='B vs L',loc='center',fontsize=18,title_fontsize=19)
+        plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='B vs L',loc='center',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
@@ -432,7 +432,7 @@ with torch.no_grad():
         #plt.ylim(bottom=1e-3)
         plt.xlim((0,1))
         #plt.yscale('log')
-        plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='B vs C',loc='lower left',fontsize=18,title_fontsize=19)
+        plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='B vs C',loc='lower left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
@@ -489,7 +489,7 @@ with torch.no_grad():
         #plt.ylim(bottom=1e-3)
         plt.xlim((0,1))
         #plt.yscale('log')
-        plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='C vs B',loc='lower left',fontsize=18,title_fontsize=19)
+        plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='C vs B',loc='lower left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
@@ -565,7 +565,7 @@ with torch.no_grad():
         #plt.ylim(bottom=1e-3)
         plt.xlim((0,1))
         #plt.yscale('log')
-        plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='C vs L',loc='upper right',fontsize=18,title_fontsize=19)
+        plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='C vs L',loc='upper right',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
@@ -632,6 +632,6 @@ with torch.no_grad():
         if weighting_method == '_flatptetaflavloss':
             text_wm = 'Loss weighting (flat)'
 
-        plt.legend(fontsize=18,title_fontsize=19)
+        plt.legend(fontsize=22,title_fontsize=24)
         plt.title(f'ROC for b vs. udsg ({text_wm})\nEvaluated on {len_test} jets ({NUM_DATASETS} files, default {default})', y=1.02)
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/roc_BvL_weighting_method{weighting_method}{fl_text}_compare_at_epochs_{epochs}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
