@@ -182,7 +182,9 @@ with torch.no_grad():
         plt.legend([f'Classifier: {wm_text},\nAUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],loc='lower right',fontsize=18,title_fontsize=19)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
-        plt.title(f'ROC b tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
+        #plt.title(f'ROC b tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
+        plt.grid(which='minor', alpha=0.9)
+        plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_b_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
         plt.show(block=False)
         time.sleep(5)
@@ -201,7 +203,9 @@ with torch.no_grad():
         plt.legend([f'Classifier: {wm_text},\nAUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],loc='lower right',fontsize=18,title_fontsize=19)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
-        plt.title(f'ROC bb tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
+        #plt.title(f'ROC bb tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
+        plt.grid(which='minor', alpha=0.9)
+        plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_bb_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
         plt.show(block=False)
         time.sleep(5)
@@ -220,7 +224,9 @@ with torch.no_grad():
         plt.legend([f'Classifier: {wm_text},\nAUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],loc='lower right',fontsize=18,title_fontsize=19)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
-        plt.title(f'ROC c tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
+        #plt.title(f'ROC c tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
+        plt.grid(which='minor', alpha=0.9)
+        plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_c_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
         plt.show(block=False)
         time.sleep(5)
@@ -243,7 +249,9 @@ with torch.no_grad():
         plt.legend([f'Classifier: {wm_text},\nAUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],loc='lower right',fontsize=18,title_fontsize=19)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
-        plt.title(f'ROC udsg tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
+        #plt.title(f'ROC udsg tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
+        plt.grid(which='minor', alpha=0.9)
+        plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_udsg_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
         plt.show(block=False)
         time.sleep(5)
@@ -269,10 +277,10 @@ with torch.no_grad():
         # now select only those that won't lead to division by zero
         # just to be safe: select only those values where the range is 0-1 (here for Prob(b) and Prob(bb), so far it looks like the -1 default is always present for all outputs simultaneously, but you never know...)
         # because we slice based on the outputs, and have to apply the slicing in exactly the same way for targets and outputs, the targets need to go first (slicing with the 'old' outputs), then slice the outputs
-        matching_DeepCSV_targets = matching_targets[((1-matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
-        matching_DeepCSV = matching_DeepCSV[((1-matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
-        matching_targets = matching_targets[(1-matching_predictions[:,2]) != 0]
-        matching_predictions = matching_predictions[(1-matching_predictions[:,2]) != 0]
+        matching_DeepCSV_targets = matching_targets[((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
+        matching_DeepCSV = matching_DeepCSV[((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
+        matching_targets = matching_targets[(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]) != 0]
+        matching_predictions = matching_predictions[(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]) != 0]
         
 
         #len_BvsUDSG = len(matching_targets)
@@ -369,10 +377,10 @@ with torch.no_grad():
         
         # now select only those that won't lead to division by zero
         #matching_inputs = matching_inputs[(1-matching_predictions[:,3]) != 0]
-        matching_DeepCSV_targets = matching_targets[((1-matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
-        matching_DeepCSV = matching_DeepCSV[((1-matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
-        matching_targets = matching_targets[(1-matching_predictions[:,3]) != 0]
-        matching_predictions = matching_predictions[(1-matching_predictions[:,3]) != 0]
+        matching_DeepCSV_targets = matching_targets[((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
+        matching_DeepCSV = matching_DeepCSV[((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)]
+        matching_targets = matching_targets[(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]) != 0]
+        matching_predictions = matching_predictions[(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]) != 0]
 
         #len_BvsC = len(matching_targets)
         #len_BvCDeepCSV = len(matching_DeepCSV_targets)
