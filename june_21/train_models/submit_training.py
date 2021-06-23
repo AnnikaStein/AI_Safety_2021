@@ -22,6 +22,8 @@ parser.add_argument('-j',"--jets", type=int, help="Number of jets, if one does n
 parser.add_argument('-m',"--dominimal", help="Only do training with minimal setup, i.e. 15 QCD, 5 TT files", default='no')
 parser.add_argument('-l',"--dofastdl", help="Use fast DataLoader", default='yes')
 parser.add_argument('-fl',"--dofl", help="Use Focal Loss", default='yes')
+parser.add_argument('-g',"--gamma", type=int, help="Gamma (exponent for focal loss)", default=2)
+parser.add_argument('-al',"--alpha", help="Alpha (prefactor for focal loss), should be comma separated list with four entries (one per category!) or type 'equal' for no additional weights.", default='equal')
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -35,6 +37,8 @@ n_samples = args.jets
 do_minimal = args.dominimal
 do_fastdataloader = args.dofastdl
 do_FL = args.dofl
+gamma = args.gamma
+alphaparse = args.alpha
     
     
 home = os.path.expanduser('~')
@@ -49,7 +53,7 @@ if NUM_DATASETS == 20:
     time = 4
     mem = 16
 else:
-    time = 11.5
+    time = 10.5
     mem = 182
     factor_FILES = NUM_DATASETS / 278.0
 
@@ -70,8 +74,8 @@ else:
 submit_command = ("sbatch "
         "--time={6}:00:00 "
         "--mem-per-cpu={5}G "
-        "--job-name=tr_{0}_{1}_{2}{3}_{4}_{8}_{9}_{10}_{11} "
-        "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4},NJETS={8},DOMINIMAL={9},FASTDATALOADER={10},FOCALLOSS={11} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath, n_samples, do_minimal, do_fastdataloader, do_FL)
+        "--job-name=tr_{0}_{1}_{2}{3}_{4}_{8}_{9}_{10}_{11}_{12}_{13} "
+        "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4},NJETS={8},DOMINIMAL={9},FASTDATALOADER={10},FOCALLOSS={11},GAMMA={12},ALPHA={13} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath, n_samples, do_minimal, do_fastdataloader, do_FL, gamma, alphaparse)
 
 print(submit_command)
 userinput = input("Submit job? (y/n) ").lower() == 'y'

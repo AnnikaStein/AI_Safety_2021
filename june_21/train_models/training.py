@@ -61,6 +61,8 @@ parser.add_argument("jets", type=int, help="Number of jets, if one does not want
 parser.add_argument("dominimal", help="Only do training with minimal setup, i.e. 15 QCD, 5 TT files")
 parser.add_argument("dofastdl", help="Use fast DataLoader")
 parser.add_argument("dofl", help="Use Focal Loss")
+parser.add_argument("gamma", type=float, help="Gamma (exponent for focal loss)")
+parser.add_argument("alpha", help="Alpha (prefactor for focal loss), should be comma separated list with four entries (one per category!) or type 'equal' for no additional weights.")
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -78,10 +80,33 @@ do_minimal = args.dominimal
 do_fastdataloader = args.dofastdl
 do_FL = args.dofl
 
+# for focal loss: parameters
+#alpha = None  # now controlled with parser
+#gamma = 2  # now controlled with parser
+
+
+    
 if do_FL == 'yes':
     fl_text = '_focalloss'
+    
+    gamma = args.gamma
+    alphaparse = args.alpha
+            
+    if gamma != 2.:
+        fl_text += f'_gamma{gamma}'
+    else:
+        gamma = 2
+     
+    if alphaparse != 'equal':
+        alphaweights = [float(a) for a in alphaparse.split(',')]
+        fl_text += f'_alpha{alphaparse}'
+        alpha = torch.Tensor(alphaweights).to(device)  # if you want to give more weight to e.g. c manually (on top of the sample weights below)
+    else:
+        alpha = None  # otherwise don't modify the additional weights
+        
 else:
     fl_text = ''
+
     
 '''
     Available weighting methods:
@@ -125,9 +150,6 @@ print(f'starting to train the model after {prev_epochs} epochs that were already
 print(f'learning rate for this script: {lrate}')
 print(f'batch size for this script: {bsize}')
     
-# for focal loss: parameters
-alpha = None  # weights are handled differently, not with the focal loss but with sample weights if wanted
-gamma = 2
 
 
 with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:

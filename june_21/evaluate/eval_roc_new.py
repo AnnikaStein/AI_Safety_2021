@@ -64,18 +64,28 @@ compare = True if len(epochs) > 1 else False
 print(f'Evaluate training at epoch {at_epoch}')
 print(f'With weighting method {weighting_method}')
 
+gamma = (weighting_method.split('_gamma')[-1]).split('_alpha')[0]
+alphaparse = (weighting_method.split('_gamma')[-1]).split('_alpha')[-1]
+if gamma[0] != '_': print('gamma',gamma)
+if alphaparse[0] != '_': print('alpha',alphaparse)
+
 wm_def_text = {'_noweighting': 'No weighting', 
                '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
                '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
                '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
-               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)'
+               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)',
+               f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma})', 
+               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
+               f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Flat, focal Loss $\gamma=$'+f'{gamma})', 
+               f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
               }
-wm_def_color = {'_noweighting': 'yellow', 
-               '_ptetaflavloss' : 'orange',
-               '_flatptetaflavloss' : 'brown',
-               '_ptetaflavloss_focalloss' : 'cyan', 
-               '_flatptetaflavloss_focalloss' : 'blue'
-              }
+#wm_def_color = {'_noweighting': 'yellow', 
+#               '_ptetaflavloss' : 'orange',
+#               '_flatptetaflavloss' : 'brown',
+#               '_ptetaflavloss_focalloss' : 'cyan', 
+#               '_flatptetaflavloss_focalloss' : 'blue',
+#               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : '#FEC55C', 
+#              }
 
 if do_minimal_eval == 'no':
     test_input_file_paths = [f'/hpcwork/um106329/june_21/scaled_QCD/test_inputs_%d_with_default_{default}.pt' % k for k in range(0,min(NUM_DATASETS,229))] + [f'/hpcwork/um106329/june_21/scaled_TT/test_inputs_%d_with_default_{default}.pt' % k for k in range(0,max(NUM_DATASETS-229,0))]
@@ -179,7 +189,7 @@ with torch.no_grad():
         plt.plot(fpr,tpr)
         deepcsvauc = metrics.auc(fpr,tpr)
         print(f"auc for b-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
-        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='upper left',fontsize=22,title_fontsize=24)
+        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC b tagging',loc='lower right',fontsize=22,title_fontsize=24)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
         #plt.title(f'ROC b tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
@@ -200,7 +210,7 @@ with torch.no_grad():
         plt.plot(fpr,tpr)
         deepcsvauc = metrics.auc(fpr,tpr)
         print(f"auc for bb-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
-        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='upper left',fontsize=22,title_fontsize=24)
+        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC bb tagging',loc='lower right',fontsize=22,title_fontsize=24)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
         #plt.title(f'ROC bb tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
@@ -221,7 +231,7 @@ with torch.no_grad():
         plt.plot(fpr,tpr)
         deepcsvauc = metrics.auc(fpr,tpr)
         print(f"auc for c-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
-        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='upper left',fontsize=22,title_fontsize=24)
+        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC c tagging',loc='lower right',fontsize=22,title_fontsize=24)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
         #plt.title(f'ROC c tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
@@ -246,7 +256,7 @@ with torch.no_grad():
         plt.plot(fpr,tpr)
         deepcsvauc = metrics.auc(fpr,tpr)
         print(f"auc for udsg-tagging DeepCSV: {metrics.auc(fpr,tpr)}")
-        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='upper left',fontsize=22,title_fontsize=24)
+        plt.legend([f'Classifier: epoch {at_epoch}\n{wm_text}, AUC = {customauc:.4f}', f'DeepCSV, AUC = {deepcsvauc:.4f}'],title='ROC udsg tagging',loc='lower right',fontsize=22,title_fontsize=24)
         plt.xlabel('false positive rate')
         plt.ylabel('true positive rate')
         #plt.title(f'ROC udsg tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
@@ -537,7 +547,7 @@ with torch.no_grad():
         #plt.ylim(-0.05,1.05)
         plt.ylim(bottom=1e-3)
         plt.yscale('log')
-        plt.legend([f'Classifier: {wm_text}\nepoch {at_epoch}, '+'AUC = {:.4f}'.format(customauc), f'DeepCSV'+', AUC = {:.4f}'.format(deepcsvauc)],title='ROC C vs B',loc='upper left',fontsize=22,title_fontsize=24)
+        plt.legend([f'Classifier: {wm_text}\nepoch {at_epoch}, '+'AUC = {:.4f}'.format(customauc), f'DeepCSV'+', AUC = {:.4f}'.format(deepcsvauc)],title='ROC C vs L',loc='upper left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
