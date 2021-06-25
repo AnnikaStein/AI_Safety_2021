@@ -39,9 +39,10 @@ parser.add_argument("prevep", help="Number of previously trained epochs, can be 
 parser.add_argument("wm", help="Weighting method: _noweighting, _ptetaflavloss, _flatptetaflavloss or with additional _focalloss; specifying multiple comma-separated weighting methods is possible")
 parser.add_argument("default", type=float, help="Default value")  # new, based on Nik's work
 parser.add_argument("jets", type=int, help="Number of jets, if one does not want to use all jets for training, if all jets shall be used, type -1")
-parser.add_argument("dominimal", help="Training done with minimal setup, i.e. 15 QCD, 5 TT files")
-parser.add_argument("dominimal_eval", help="Only minimal number of files for evaluation")
+#parser.add_argument("dominimal", help="Training done with minimal setup, i.e. 15 QCD, 5 TT files")
+parser.add_argument("dominimal_eval", help="Only minimal number of files for evaluation (yes/no)")
 #parser.add_argument("dofl", help="Use Focal Loss")  # pack focal loss into name of the weighting method
+parser.add_argument("check_inputs", help="Check certain inputs in slices of Prob(udsg) (yes/no)")
 args = parser.parse_args()
 
 # weighting method can now be the simple names of the weighting method or the name with an additional _focalloss
@@ -61,11 +62,12 @@ if default == int(default):
     default = int(default)
 
 n_samples = args.jets
-do_minimal = args.dominimal
+#do_minimal = args.dominimal
 do_minimal_eval = args.dominimal_eval
 compare_eps = True if len(epochs) > 1 else False
 compare_wmets = True if len(wmets) > 1 else False
 #do_FL = args.dofl
+check_inputs = args.check_inputs
 
 #if do_FL == 'yes':
 #    fl_text = '_focalloss'
@@ -97,6 +99,7 @@ wm_def_text = {'_noweighting': 'No weighting',
                '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)',
                f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma})', 
                f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
+               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r',$\alpha=$'+f'{alphaparse})', 
                f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma})', 
                f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})',
               }
@@ -107,6 +110,7 @@ wm_def_color = {'_noweighting': '#92638C',
                '_flatptetaflavloss_focalloss' : '#4BC2D8',
                f'_ptetaflavloss_focalloss_gamma{gamma}' : '#FEC55C', 
                f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : '#FEC55C', 
+               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : '#FEC55C', 
                f'_flatptetaflavloss_focalloss_gamma{gamma}' : '#4BC2D8',
                f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : '#4BC2D8',
               }
@@ -184,9 +188,9 @@ def calc_BvL(predictions):
     matching_DeepCSV = np.where(np.tile(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1), (4,1)).transpose(), matching_DeepCSV, (-1.0)*np.ones((len(matching_targets),4)))
     matching_predictions = np.where(np.tile((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3] != 0), (4,1)).transpose(), matching_predictions, (-1.0)*np.ones((len(matching_targets),4)))
     
-    custom_BvL = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,0]+matching_predictions[:,1])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]), (-0.045))*np.ones(len(matching_targets))
+    custom_BvL = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,0]+matching_predictions[:,1])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]), (-0.045)*np.ones(len(matching_targets)))
     
-    DeepCSV_BvL = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,0]+matching_DeepCSV[:,1])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]), (-0.045))*np.ones(len(matching_targets))
+    DeepCSV_BvL = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,0]+matching_DeepCSV[:,1])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]), (-0.045)*np.ones(len(matching_targets)))
     
     return custom_BvL, DeepCSV_BvL
 
@@ -202,9 +206,9 @@ def calc_BvC(predictions):
     matching_DeepCSV = np.where(np.tile(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1), (4,1)).transpose(), matching_DeepCSV, (-1.0)*np.ones((len(matching_targets),4)))
     matching_predictions = np.where(np.tile((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2] != 0) , (4,1)).transpose(), matching_predictions, (-1.0)*np.ones((len(matching_targets),4)))
     
-    custom_BvC = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,0]+matching_predictions[:,1])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]), (-0.045))*np.ones(len(matching_targets))
+    custom_BvC = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,0]+matching_predictions[:,1])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]), (-0.045)*np.ones(len(matching_targets)))
     
-    DeepCSV_BvC = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,0]+matching_DeepCSV[:,1])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]), (-0.045))*np.ones(len(matching_targets))
+    DeepCSV_BvC = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,0]+matching_DeepCSV[:,1])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]), (-0.045)*np.ones(len(matching_targets)))
     
     return custom_BvC, DeepCSV_BvC
     
@@ -220,9 +224,9 @@ def calc_CvB(predictions):
     matching_DeepCSV = np.where(np.tile((((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)), (4,1)).transpose(), matching_DeepCSV, (-1.0)*np.ones((len(matching_targets),4)))
     matching_predictions = np.where(np.tile((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2] != 0), (4,1)).transpose(), matching_predictions, (-1.0)*np.ones((len(matching_targets),4)))
     
-    custom_CvB = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,2])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]), (-0.045))*np.ones(len(matching_targets))
+    custom_CvB = np.where(((matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,2])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,2]), (-0.045)*np.ones(len(matching_targets)))
     
-    DeepCSV_CvB = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,2])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]), (-0.045))*np.ones(len(matching_targets))
+    DeepCSV_CvB = np.where(((matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,2])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]), (-0.045)*np.ones(len(matching_targets)))
     
     return custom_CvB, DeepCSV_CvB
     
@@ -238,9 +242,9 @@ def calc_CvL(predictions):
     matching_DeepCSV = np.where(np.tile((((matching_DeepCSV[:,2]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1)), (4,1)).transpose(), matching_DeepCSV, (-1.0)*np.ones((len(matching_targets),4)))
     matching_predictions = np.where(np.tile((matching_predictions[:,2]+matching_predictions[:,3] != 0), (4,1)).transpose(), matching_predictions, (-1.0)*np.ones((len(matching_targets),4)))
     
-    custom_CvL = np.where(((matching_predictions[:,2]+matching_predictions[:,3]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,2])/(matching_predictions[:,2]+matching_predictions[:,3]), (-0.045))*np.ones(len(matching_targets))
+    custom_CvL = np.where(((matching_predictions[:,2]+matching_predictions[:,3]) != 0) & (matching_predictions[:,0] >= 0) & (matching_predictions[:,0] <= 1) & (matching_predictions[:,1] >= 0) & (matching_predictions[:,1] <= 1), (matching_predictions[:,2])/(matching_predictions[:,2]+matching_predictions[:,3]), (-0.045)*np.ones(len(matching_targets)))
     
-    DeepCSV_CvL = np.where(((matching_DeepCSV[:,2]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,2])/(matching_DeepCSV[:,2]+matching_DeepCSV[:,3]), (-0.045))*np.ones(len(matching_targets))
+    DeepCSV_CvL = np.where(((matching_DeepCSV[:,2]+matching_DeepCSV[:,3]) != 0) & (matching_DeepCSV[:,0] >= 0) & (matching_DeepCSV[:,0] <= 1) & (matching_DeepCSV[:,1] >= 0) & (matching_DeepCSV[:,1] <= 1),(matching_DeepCSV[:,2])/(matching_DeepCSV[:,2]+matching_DeepCSV[:,3]), (-0.045)*np.ones(len(matching_targets)))
     
     return custom_CvL, DeepCSV_CvL
 
@@ -898,13 +902,13 @@ with torch.no_grad():
         predictions = model(test_inputs).detach().numpy()
         
         wm_text = wm_def_text[weighting_method]
-        #'''
         
-        mostprob = np.argmax(predictions, axis=-1)
-        cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
-        print(f'epoch {at_epoch}\n',cfm)
-        with open(f'/home/um106329/aisafety/june_21/evaluate/confusion_matrices/weighting_method{weighting_method}_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
-            np.save(f, cfm)
+        
+        #mostprob = np.argmax(predictions, axis=-1)
+        #cfm = metrics.confusion_matrix(test_targets.cpu(), mostprob)
+        #print(f'epoch {at_epoch}\n',cfm)
+        #with open(f'/home/um106329/aisafety/june_21/evaluate/confusion_matrices/weighting_method{weighting_method}_default_{default}_{n_samples}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_minieval_{do_minimal_eval}.npy', 'wb') as f:
+        #    np.save(f, cfm)
 
 
         classifierHist = hist.Hist("Jets",
@@ -979,7 +983,7 @@ with torch.no_grad():
         plt.cla()
         plt.close('all')
         gc.collect(2)
-
+        
         
         # =================================================================================================================
         # 
@@ -1088,7 +1092,7 @@ with torch.no_grad():
         del classifierHist
         gc.collect()
         
-        #'''
+        
         
         # =================================================================================================================
         # 
@@ -1101,8 +1105,9 @@ with torch.no_grad():
         custom_CvB, DeepCSV_CvB = calc_CvB(predictions)
         custom_CvL, DeepCSV_CvL = calc_CvL(predictions)
         
-        del predictions
-        gc.collect()
+        if check_inputs != 'yes':
+            del predictions
+            gc.collect()
         
         discriminatorHist = hist.Hist("Jets",
                             hist.Cat("sample","sample name"),
@@ -1219,3 +1224,95 @@ with torch.no_grad():
         plt.cla()
         plt.close('all')
         gc.collect(2)
+        
+        
+        # =================================================================================================================
+        # 
+        #                    For the different bins of the tagger outputs, show interesting input variables
+        # 
+        # -----------------------------------------------------------------------------------------------------------------
+        
+        if check_inputs == 'yes':
+        
+            display_names = ['Jet $\eta$',
+                'Jet $p_T$',
+                'Flight Distance 2D Sig','Flight Distance 2D Val','Flight Distance 3D Sig', 'Flight Distance 3D Val',
+                'Track Decay Len Val [0]','Track Decay Len Val [1]','Track Decay Len Val [2]','Track Decay Len Val [3]','Track Decay Len Val [4]','Track Decay Len Val [5]',
+                'Track $\Delta R$ [0]','Track $\Delta R$ [1]','Track $\Delta R$ [2]','Track $\Delta R$ [3]','Track $\Delta R$ [4]','Track $\Delta R$ [5]',
+                'Track $\eta_{rel}$ [0]','Track $\eta_{rel}$ [1]','Track $\eta_{rel}$ [2]','Track $\eta_{rel}$ [3]',
+                'Track Jet Dist Val [0]','Track Jet Dist Val [1]','Track Jet Dist Val [2]','Track Jet Dist Val [3]','Track Jet Dist Val [4]','Track Jet Dist Val [5]',
+                'Track Jet $p_T$',
+                'Track $p_T$ Ratio [0]','Track $p_T$ Ratio [1]','Track $p_T$ Ratio [2]','Track $p_T$ Ratio [3]','Track $p_T$ Ratio [4]','Track $p_T$ Ratio [5]',
+                'Track $p_{T,rel}$ [0]','Track $p_{T,rel}$ [1]','Track $p_{T,rel}$ [2]','Track $p_{T,rel}$ [3]','Track $p_{T,rel}$ [4]','Track $p_{T,rel}$ [5]',
+                'Track SIP 2D Sig Above Charm',
+                'Track SIP 2D Sig [0]','Track SIP 2D Sig [1]','Track SIP 2D Sig [2]','Track SIP 2D Sig [3]','Track SIP 2D Sig [4]','Track SIP 2D Sig [5]',
+                'Track SIP 2D Val Above Charm',
+                'Track SIP 3D Sig Above Charm',
+                'Track SIP 3D Sig [0]','Track SIP 3D Sig [1]','Track SIP 3D Sig [2]','Track SIP 3D Sig [3]','Track SIP 3D Sig [4]','Track SIP 3D Sig [5]',
+                'Track SIP 3D Val Above Charm',
+                'Track Sum Jet $\Delta R$','Track Sum Jet $E_T$ Ratio',
+                'Vertex Category','Vertex Energy Ratio','Vertex Jet $\Delta R$','Vertex Mass',
+                'Jet N Secondary Vertices','Jet N Selected Tracks','Jet N Tracks $\eta_{rel}$','Vertex N Tracks',]
+        
+               
+            for b in range(2,len(bins)-3):
+
+
+                fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=[17,15],num=30)
+
+                # for variable in [0,1,2,3,4,5,6,7,8,9,10,11,12,63,64,65,66]:
+                for i, variable in enumerate([0,1,12,64]):
+                    scaler = torch.load(f'/hpcwork/um106329/june_21/scaler_{variable}_with_default_{default}.pt')
+                    scaledback = scaler.inverse_transform(test_inputs[:,variable])
+
+                    in_this_bin_b  = scaledback[(predictions[:,3] >= bins[b]) & (predictions[:,3] < bins[b+1]) & (jetFlavour.numpy() == 1)]
+                    in_this_bin_bb = scaledback[(predictions[:,3] >= bins[b]) & (predictions[:,3] < bins[b+1]) & (jetFlavour.numpy() == 2)]
+                    in_this_bin_c  = scaledback[(predictions[:,3] >= bins[b]) & (predictions[:,3] < bins[b+1]) & (jetFlavour.numpy() == 3)]
+                    in_this_bin_l  = scaledback[(predictions[:,3] >= bins[b]) & (predictions[:,3] < bins[b+1]) & (jetFlavour.numpy() == 4)]
+
+                    #if variable == 1:
+                    #    exec("ax%s.hist(in_this_bin_b, bins=100, range=(0,1000), histtype='step', label='b-jets', linewidth=2)"%(i+1))
+                    #    exec("ax%s.hist(in_this_bin_bb, bins=100, range=(0,1000), histtype='step', label='bb-jets', linewidth=2)"%(i+1))
+                    #    exec("ax%s.hist(in_this_bin_c, bins=100, range=(0,1000), histtype='step', label='c-jets', linewidth=2)"%(i+1))
+                    #    exec("ax%s.hist(in_this_bin_l, bins=100, range=(0,1000), histtype='step', label='udsg-jets', linewidth=2)"%(i+1))
+
+                    #else:
+                    exec("ax%s.hist(in_this_bin_b, bins=100, histtype='step', range=(min(scaledback),max(scaledback)), label='b-jets', linewidth=2)"%(i+1))
+                    exec("ax%s.hist(in_this_bin_bb, bins=100, histtype='step',range=(min(scaledback),max(scaledback)), label='bb-jets', linewidth=2)"%(i+1))
+                    exec("ax%s.hist(in_this_bin_c, bins=100, histtype='step', range=(min(scaledback),max(scaledback)), label='c-jets', linewidth=2)"%(i+1))
+                    exec("ax%s.hist(in_this_bin_l, bins=100, histtype='step', range=(min(scaledback),max(scaledback)), label='udsg-jets', linewidth=2)"%(i+1))
+                    exec("ax%s.set_xlabel(display_names[%s])"%((i+1),(variable)))
+                    exec("ax%s.set_ylabel('Jets')"%(i+1))
+
+
+                ax1.set_ylim(bottom=0, auto=True)
+                ax2.set_ylim(bottom=0, auto=True)
+                ax3.set_ylim(bottom=0, auto=True)
+                ax4.set_ylim(bottom=0, auto=True)
+
+                ax1.set_yscale('log')
+                ax2.set_yscale('log')
+                ax3.set_yscale('log')
+                #ax4.set_yscale('log')
+
+                ax1.autoscale(True)
+                ax2.autoscale(True)
+                ax3.autoscale(True)
+                ax4.autoscale(True)
+
+                #ax1.ticklabel_format(scilimits=(-5,5))
+                #ax2.ticklabel_format(scilimits=(-5,5))
+                #ax3.ticklabel_format(scilimits=(-5,5))
+                ax4.ticklabel_format(scilimits=(-3,3))
+
+                ax4.legend()
+
+                fig.suptitle(f'Inputs in Prob(udsg) bin [{bins[b]:.2f},{bins[b+1]:.2f}], {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+                fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/input_histograms_by_tagger_outputs/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}_Probudsg_bin_{b}.png', bbox_inches='tight', dpi=400)
+                gc.collect()
+                plt.show(block=False)
+                time.sleep(5)
+                plt.clf()
+                plt.cla()
+                plt.close('all')
+                gc.collect(2)

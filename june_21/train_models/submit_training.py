@@ -23,7 +23,10 @@ parser.add_argument('-m',"--dominimal", help="Only do training with minimal setu
 parser.add_argument('-l',"--dofastdl", help="Use fast DataLoader", default='yes')
 parser.add_argument('-fl',"--dofl", help="Use Focal Loss", default='yes')
 parser.add_argument('-g',"--gamma", type=int, help="Gamma (exponent for focal loss)", default=2)
-parser.add_argument('-al',"--alpha", help="Alpha (prefactor for focal loss), should be comma separated list with four entries (one per category!) or type 'equal' for no additional weights.", default='equal')
+parser.add_argument('-al1',"--alpha1", help="Alpha (prefactor for focal loss) for category 1 or type 'equal' for no additional weights.", default='equal')
+parser.add_argument('-al2',"--alpha2", help="Alpha (prefactor for focal loss) for category 2 or type 'equal' for no additional weights.", default='equal')
+parser.add_argument('-al3',"--alpha3", help="Alpha (prefactor for focal loss) for category 3 or type 'equal' for no additional weights.", default='equal')
+parser.add_argument('-al4',"--alpha4", help="Alpha (prefactor for focal loss) for category 4 or type 'equal' for no additional weights.", default='equal')
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -38,7 +41,10 @@ do_minimal = args.dominimal
 do_fastdataloader = args.dofastdl
 do_FL = args.dofl
 gamma = args.gamma
-alphaparse = args.alpha
+alphaparse1 = args.alpha1
+alphaparse2 = args.alpha2
+alphaparse3 = args.alpha3
+alphaparse4 = args.alpha4
     
     
 home = os.path.expanduser('~')
@@ -53,7 +59,7 @@ if NUM_DATASETS == 20:
     time = 4
     mem = 16
 else:
-    time = 10.5
+    time = 9.5
     mem = 182
     factor_FILES = NUM_DATASETS / 278.0
 
@@ -74,8 +80,8 @@ else:
 submit_command = ("sbatch "
         "--time={6}:00:00 "
         "--mem-per-cpu={5}G "
-        "--job-name=tr_{0}_{1}_{2}{3}_{4}_{8}_{9}_{10}_{11}_{12}_{13} "
-        "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4},NJETS={8},DOMINIMAL={9},FASTDATALOADER={10},FOCALLOSS={11},GAMMA={12},ALPHA={13} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath, n_samples, do_minimal, do_fastdataloader, do_FL, gamma, alphaparse)
+        "--job-name=tr_{0}_{1}_{2}{3}_{4}_{8}_{9}_{10}_{11}_{12}_{13}_{14}_{15}_{16} "
+        "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4},NJETS={8},DOMINIMAL={9},FASTDATALOADER={10},FOCALLOSS={11},GAMMA={12},ALPHA1={13},ALPHA2={14},ALPHA3={15},ALPHA4={16} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath, n_samples, do_minimal, do_fastdataloader, do_FL, gamma, alphaparse1, alphaparse2, alphaparse3, alphaparse4)
 
 print(submit_command)
 userinput = input("Submit job? (y/n) ").lower() == 'y'

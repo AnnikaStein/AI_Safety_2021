@@ -62,7 +62,10 @@ parser.add_argument("dominimal", help="Only do training with minimal setup, i.e.
 parser.add_argument("dofastdl", help="Use fast DataLoader")
 parser.add_argument("dofl", help="Use Focal Loss")
 parser.add_argument("gamma", type=float, help="Gamma (exponent for focal loss)")
-parser.add_argument("alpha", help="Alpha (prefactor for focal loss), should be comma separated list with four entries (one per category!) or type 'equal' for no additional weights.")
+parser.add_argument("alpha1", help="Alpha (prefactor for focal loss) for category 1 or type 'equal' for no additional weights.")
+parser.add_argument("alpha2", help="Alpha (prefactor for focal loss) for category 2 or type 'equal' for no additional weights.")
+parser.add_argument("alpha3", help="Alpha (prefactor for focal loss) for category 3 or type 'equal' for no additional weights.")
+parser.add_argument("alpha4", help="Alpha (prefactor for focal loss) for category 4 or type 'equal' for no additional weights.")
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -90,17 +93,19 @@ if do_FL == 'yes':
     fl_text = '_focalloss'
     
     gamma = args.gamma
-    alphaparse = args.alpha
+    alphaparse1 = args.alpha1
+    alphaparse2 = args.alpha2
+    alphaparse3 = args.alpha3
+    alphaparse4 = args.alpha4
             
     if gamma != 2.:
         fl_text += f'_gamma{gamma}'
     else:
         gamma = 2
      
-    if alphaparse != 'equal':
-        alphaweights = [float(a) for a in alphaparse.split(',')]
-        fl_text += f'_alpha{alphaparse}'
-        alpha = torch.Tensor(alphaweights).to(device)  # if you want to give more weight to e.g. c manually (on top of the sample weights below)
+    if alphaparse1 != 'equal':  # if no additional weights are specified in the submission, all four weights will be 'equal', so also the first one
+        fl_text += f'_alpha{alphaparse1},{alphaparse2},{alphaparse3},{alphaparse4}'
+        alpha = torch.Tensor([float(alphaparse1),float(alphaparse2),float(alphaparse3),float(alphaparse4)]).to(device)  # if you want to give more weight to e.g. c manually (on top of the sample weights below)
     else:
         alpha = None  # otherwise don't modify the additional weights
         

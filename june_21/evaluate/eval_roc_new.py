@@ -35,7 +35,7 @@ parser.add_argument("prevep", help="Number of previously trained epochs, can be 
 parser.add_argument("wm", help="Weighting method: _noweighting, _ptetaflavloss, _flatptetaflavloss or with additional _focalloss; specifying multiple comma-separated weighting methods is possible")
 parser.add_argument("default", type=float, help="Default value")  # new, based on Nik's work
 parser.add_argument("jets", type=int, help="Number of jets, if one does not want to use all jets for training, if all jets shall be used, type -1")
-parser.add_argument("dominimal", help="Only do training with minimal setup, i.e. 15 QCD, 5 TT files")
+#parser.add_argument("dominimal", help="Only do training with minimal setup, i.e. 15 QCD, 5 TT files")
 parser.add_argument("dominimal_eval", help="Only minimal number of files for evaluation")
 #parser.add_argument("compare", help="Compare with earlier epochs", default='no')  # one can infer if user wants to compare epochs, if user put in more than one epoch
 #parser.add_argument("dofl", help="Use Focal Loss")
@@ -51,7 +51,7 @@ if default == int(default):
     default = int(default)
     
 n_samples = args.jets
-do_minimal = args.dominimal
+#do_minimal = args.dominimal
 do_minimal_eval = args.dominimal_eval
 compare = True if len(epochs) > 1 else False
 #do_FL = args.dofl
@@ -76,6 +76,7 @@ wm_def_text = {'_noweighting': 'No weighting',
                '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)',
                f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma})', 
                f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
+               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r',$\alpha=$'+f'{alphaparse})', 
                f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Flat, focal Loss $\gamma=$'+f'{gamma})', 
                f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
               }
