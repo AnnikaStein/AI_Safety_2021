@@ -26,8 +26,8 @@
 
 cd /home/um106329/aisafety/june_21/train_models
 module unload intelmpi; module switch intel gcc
-module load cuda/110
+module load cuda/11.0
 module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
-python3 training.py ${FILES} ${PREVEP} ${ADDEP} ${WM} ${DEFAULT} ${NJETS} ${DOMINIMAL} ${FASTDATALOADER} ${FOCALLOSS} ${GAMMA} ${ALPHA1} ${ALPHA2} ${ALPHA3} ${ALPHA4}
+python3 training.py ${FILES} ${PREVEP} ${ADDEP} ${WM} ${DEFAULT} ${NJETS} ${DOMINIMAL} ${FASTDATALOADER} ${FOCALLOSS} ${GAMMA} ${ALPHA1} ${ALPHA2} ${ALPHA3} ${ALPHA4} ${EPSILON}

@@ -27,6 +27,7 @@ parser.add_argument('-al1',"--alpha1", help="Alpha (prefactor for focal loss) fo
 parser.add_argument('-al2',"--alpha2", help="Alpha (prefactor for focal loss) for category 2 or type 'equal' for no additional weights.", default='equal')
 parser.add_argument('-al3',"--alpha3", help="Alpha (prefactor for focal loss) for category 3 or type 'equal' for no additional weights.", default='equal')
 parser.add_argument('-al4',"--alpha4", help="Alpha (prefactor for focal loss) for category 4 or type 'equal' for no additional weights.", default='equal')
+parser.add_argument('-eps',"--epsilon", type=float, help="Do Adversarial Training with epsilon > 0, or put -1 to do basic training only.", default=-1.0)
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -45,6 +46,7 @@ alphaparse1 = args.alpha1
 alphaparse2 = args.alpha2
 alphaparse3 = args.alpha3
 alphaparse4 = args.alpha4
+epsilon = args.epsilon
     
     
 home = os.path.expanduser('~')
@@ -64,6 +66,8 @@ else:
     factor_FILES = NUM_DATASETS / 278.0
 
 factor_EPOCHS = epochs / 40.0
+if epsilon > 0:
+    factor_EPOCHS *= 1.25
 
 if NUM_DATASETS == 20:
     time = int(np.rint(time * factor_EPOCHS) + 1)
@@ -80,8 +84,8 @@ else:
 submit_command = ("sbatch "
         "--time={6}:00:00 "
         "--mem-per-cpu={5}G "
-        "--job-name=tr_{0}_{1}_{2}{3}_{4}_{8}_{9}_{10}_{11}_{12}_{13}_{14}_{15}_{16} "
-        "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4},NJETS={8},DOMINIMAL={9},FASTDATALOADER={10},FOCALLOSS={11},GAMMA={12},ALPHA1={13},ALPHA2={14},ALPHA3={15},ALPHA4={16} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath, n_samples, do_minimal, do_fastdataloader, do_FL, gamma, alphaparse1, alphaparse2, alphaparse3, alphaparse4)
+        "--job-name=tr_{0}_{1}_{2}{3}_{4}_{8}_{9}_{10}_{11}_{12}_{13}_{14}_{15}_{16}_{17} "
+        "--export=FILES={0},PREVEP={1},ADDEP={2},WM={3},DEFAULT={4},NJETS={8},DOMINIMAL={9},FASTDATALOADER={10},FOCALLOSS={11},GAMMA={12},ALPHA1={13},ALPHA2={14},ALPHA3={15},ALPHA4={16},EPSILON={17} {7}training.sh").format(NUM_DATASETS, prev_epochs, epochs, weighting_method, default, mem, time, shPath, n_samples, do_minimal, do_fastdataloader, do_FL, gamma, alphaparse1, alphaparse2, alphaparse3, alphaparse4, epsilon)
 
 print(submit_command)
 userinput = input("Submit job? (y/n) ").lower() == 'y'

@@ -64,22 +64,46 @@ compare = True if len(epochs) > 1 else False
 print(f'Evaluate training at epoch {at_epoch}')
 print(f'With weighting method {weighting_method}')
 
-gamma = (weighting_method.split('_gamma')[-1]).split('_alpha')[0]
-alphaparse = (weighting_method.split('_gamma')[-1]).split('_alpha')[-1]
-if gamma[0] != '_': print('gamma',gamma)
-if alphaparse[0] != '_': print('alpha',alphaparse)
+gamma = [((weighting_method.split('_gamma')[-1]).split('_alpha')[0]).split('_adv_tr_eps')[0] for weighting_method in wmets]
+alphaparse = [((weighting_method.split('_gamma')[-1]).split('_alpha')[-1]).split('_adv_tr_eps')[0] for weighting_method in wmets]
+epsilon = [(weighting_method.split('_adv_tr_eps')[-1]) for weighting_method in wmets]
+print('gamma',gamma)
+print('alpha',alphaparse)
+print('epsilon',epsilon)
 
 wm_def_text = {'_noweighting': 'No weighting', 
                '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
                '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
                '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
-               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)',
-               f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma})', 
-               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
-               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r',$\alpha=$'+f'{alphaparse})', 
-               f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Flat, focal Loss $\gamma=$'+f'{gamma})', 
-               f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
+               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)', 
               }
+
+more_text = [(f'_ptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{g})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{g})') for g in gamma] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , r'$p_T, \eta$ reweighted (FL $\gamma=$'+f'{g}, $\epsilon=$'+f'{e})') for g, a, e in zip(gamma,alphaparse,epsilon)]
+
+more_text_dict = {k:v for k, v in more_text}
+wm_def_text =  {**wm_def_text, **more_text_dict}
+
+#gamma = (weighting_method.split('_gamma')[-1]).split('_alpha')[0]
+#alphaparse = (weighting_method.split('_gamma')[-1]).split('_alpha')[-1]
+#if gamma[0] != '_': print('gamma',gamma)
+#if alphaparse[0] != '_': print('alpha',alphaparse)
+
+#wm_def_text = {'_noweighting': 'No weighting', 
+#               '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
+#               '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
+#               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
+#               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)',
+#               f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma})', 
+#               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
+#               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r',$\alpha=$'+f'{alphaparse})', 
+#               f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Flat, focal Loss $\gamma=$'+f'{gamma})', 
+#               f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
+#              }
 #wm_def_color = {'_noweighting': 'yellow', 
 #               '_ptetaflavloss' : 'orange',
 #               '_flatptetaflavloss' : 'brown',

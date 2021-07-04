@@ -85,35 +85,71 @@ check_inputs = args.check_inputs
 print(f'Evaluate training at epoch {at_epoch}')
 print(f'With weighting method {weighting_method}')
 
-gamma = (weighting_method.split('_gamma')[-1]).split('_alpha')[0]
-alphaparse = (weighting_method.split('_gamma')[-1]).split('_alpha')[-1]
-if gamma != '': print('gamma',gamma)
-if alphaparse != '': print('alpha',alphaparse)
-    
-colorcode = ['firebrick','magenta','cyan','darkgreen']
-colorcode_2 = ['#DA7479','#C89FD4','#63D8F1','#7DFDB4']  # from http://tristen.ca/hcl-picker/#/hlc/4/1/DA7479/7DFDB4
+gamma = [((weighting_method.split('_gamma')[-1]).split('_alpha')[0]).split('_adv_tr_eps')[0] for weighting_method in wmets]
+alphaparse = [((weighting_method.split('_gamma')[-1]).split('_alpha')[-1]).split('_adv_tr_eps')[0] for weighting_method in wmets]
+epsilon = [(weighting_method.split('_adv_tr_eps')[-1]) for weighting_method in wmets]
+print('gamma',gamma)
+print('alpha',alphaparse)
+print('epsilon',epsilon)
+
 wm_def_text = {'_noweighting': 'No weighting', 
                '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
                '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
                '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
-               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)',
-               f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma})', 
-               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
-               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r',$\alpha=$'+f'{alphaparse})', 
-               f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma})', 
-               f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})',
+               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)', 
               }
+
+more_text = [(f'_ptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{g})') for g in gamma] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{g})') for g in gamma] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , r'$p_T, \eta$ reweighted (FL $\gamma=$'+f'{g}, $\epsilon=$'+f'{e})') for g, a, e in zip(gamma,alphaparse,epsilon)]
+
+more_text_dict = {k:v for k, v in more_text}
+wm_def_text =  {**wm_def_text, **more_text_dict}
+
+#gamma = (weighting_method.split('_gamma')[-1]).split('_alpha')[0]
+#alphaparse = (weighting_method.split('_gamma')[-1]).split('_alpha')[-1]
+#if gamma != '': print('gamma',gamma)
+#if alphaparse != '': print('alpha',alphaparse)
+    
+colorcode = ['firebrick','magenta','cyan','darkgreen']
+colorcode_2 = ['#DA7479','#C89FD4','#63D8F1','#7DFDB4']  # from http://tristen.ca/hcl-picker/#/hlc/4/1/DA7479/7DFDB4
+#wm_def_text = {'_noweighting': 'No weighting', 
+#               '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
+#               '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
+#               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
+#               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)',
+#               f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma})', 
+#               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
+#               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r',$\alpha=$'+f'{alphaparse})', 
+#               f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma})', 
+#               f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})',
+#              }
 wm_def_color = {'_noweighting': '#92638C', 
                '_ptetaflavloss' : '#F06644',
                '_flatptetaflavloss' : '#7AC7A3',
                '_ptetaflavloss_focalloss' : '#FEC55C', 
                '_flatptetaflavloss_focalloss' : '#4BC2D8',
-               f'_ptetaflavloss_focalloss_gamma{gamma}' : '#FEC55C', 
-               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : '#FEC55C', 
-               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : '#FEC55C', 
-               f'_flatptetaflavloss_focalloss_gamma{gamma}' : '#4BC2D8',
-               f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : '#4BC2D8',
+               #f'_ptetaflavloss_focalloss_gamma{gamma}' : '#FEC55C', 
+               #f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : '#FEC55C', 
+               #f'_ptetaflavloss_focalloss_alpha{alphaparse}' : '#FEC55C', 
+               #f'_flatptetaflavloss_focalloss_gamma{gamma}' : '#4BC2D8',
+               #f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : '#4BC2D8',
+               #f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}_adv_tr_eps{epsilon}' : '#4BC2D8',
               }
+more_color = [(f'_ptetaflavloss_focalloss_gamma{g}' , '#FEC55C') for g in gamma] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , '#FEC55C') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}' , '#4BC2D8') for g in gamma] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , '#4BC2D8') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , '#FEC55C') for g, e in zip(gamma,epsilon)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}_adv_tr_eps{e}' , '#FEC55C') for g, a, e in zip(gamma,alphaparse,epsilon)]
+
+more_color_dict = {k:v for k, v in more_color}
+wm_def_color =  {**wm_def_color, **more_color_dict}
+
 # 51 bin edges betweeen 0 and 1 --> 50 bins of width 0.02, plus two additional bins at -0.05 and -0.025, as well as at 1.025 and 1.05
 # in total: 54 bins, 55 bin edges
 # ensures that there are bin edges at 0 and 1 ('exactly') with the option to plot DeepCSV defaults close to the other values

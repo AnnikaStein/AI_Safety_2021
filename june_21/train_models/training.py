@@ -32,6 +32,8 @@ from jet_reweighting import FlavEtaPtSampler
 from fast_tensor_data_loader import FastTensorDataLoader
 
 from focal_loss import FocalLoss, focal_loss
+sys.path.append("/home/um106329/aisafety/june_21/attack/")
+from disturb_inputs import fgsm_attack
 
 #plt.style.use(hep.cms.style.ROOT)
 
@@ -66,6 +68,8 @@ parser.add_argument("alpha1", help="Alpha (prefactor for focal loss) for categor
 parser.add_argument("alpha2", help="Alpha (prefactor for focal loss) for category 2 or type 'equal' for no additional weights.")
 parser.add_argument("alpha3", help="Alpha (prefactor for focal loss) for category 3 or type 'equal' for no additional weights.")
 parser.add_argument("alpha4", help="Alpha (prefactor for focal loss) for category 4 or type 'equal' for no additional weights.")
+parser.add_argument("epsilon", type=float, help="Do Adversarial Training with epsilon > 0, or put -1 to do basic training only.")
+#parser.add_argument("default0", help="Place defaults at 0")  # maybe a ToDo
 args = parser.parse_args()
 
 NUM_DATASETS = args.files
@@ -82,6 +86,7 @@ n_samples = args.jets
 do_minimal = args.dominimal
 do_fastdataloader = args.dofastdl
 do_FL = args.dofl
+epsilon = args.epsilon
 
 # for focal loss: parameters
 #alpha = None  # now controlled with parser
@@ -113,6 +118,11 @@ else:
     fl_text = ''
 
     
+if epsilon > 0:
+    at_text = f'_adv_tr_eps{epsilon}'
+else:
+    at_text = ''
+    
 '''
     Available weighting methods:
         '_noweighting' :  apply no weighting factors at all (will converge to a nice result performance-wise, but the discriminator shapes are basically just two bins (0 or 1, almost nothing in between))
@@ -121,7 +131,7 @@ else:
         '_flatptetaflavloss' : flat distributions in pt and eta for all flavours, and reweighted class imbalance between b, bb, c, udsg -- uses sample weights that will be multiplied with the loss
 '''
 
-print(f'weighting method: {weighting_method}{fl_text}')   
+print(f'weighting method: {weighting_method}{fl_text}{at_text}')   
 
 # for the initial setup, reduce sources of randomness (e.g. if different methods will be used, they should start with the same initial weights), but later, using deterministic algs etc. would just slow things down without providing any benefit
 if prev_epochs == 0:
@@ -133,12 +143,12 @@ if prev_epochs == 0:
         torch.cuda.manual_seed(seed)
         
     parent_dir_1 = '/home/um106329/aisafety/june_21/train_models/saved_models'
-    directory_1 = f'{weighting_method}{fl_text}_{NUM_DATASETS}_{default}_{n_samples}'
+    directory_1 = f'{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_{default}_{n_samples}'
     path_1 = os.path.join(parent_dir_1, directory_1)
     if not os.path.exists(path_1):
         os.mkdir(path_1)
     parent_dir_2 = '/hpcwork/um106329/june_21/saved_models'
-    directory_2 = f'{weighting_method}{fl_text}_{NUM_DATASETS}_{default}_{n_samples}'
+    directory_2 = f'{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_{default}_{n_samples}'
     path_2 = os.path.join(parent_dir_2, directory_2)
     if not os.path.exists(path_2):
         os.mkdir(path_2)
@@ -157,11 +167,11 @@ print(f'batch size for this script: {bsize}')
     
 
 
-with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
+with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
     if NUM_DATASETS > 229 or do_minimal == 'yes':
-        log.write(f"Setup: QCD and TT to Semileptonic samples with default value {default}, weighting method {weighting_method}{fl_text}, so far {prev_epochs} epochs done. Use lr={lrate} and bsize={bsize}. {n_samples} jets (-1 stands for all jets).\n")
+        log.write(f"Setup: QCD and TT to Semileptonic samples with default value {default}, weighting method {weighting_method}{fl_text}{at_text}, so far {prev_epochs} epochs done. Use lr={lrate} and bsize={bsize}. {n_samples} jets (-1 stands for all jets).\n")
     else:
-        log.write(f"Setup: QCD samples with default value {default}, weighting method {weighting_method}{fl_text}, so far {prev_epochs} epochs done. Use lr={lrate} and bsize={bsize}. {n_samples} jets (-1 stands for all jets).\n")
+        log.write(f"Setup: QCD samples with default value {default}, weighting method {weighting_method}{fl_text}{at_text}, so far {prev_epochs} epochs done. Use lr={lrate} and bsize={bsize}. {n_samples} jets (-1 stands for all jets).\n")
 
         
         
@@ -359,7 +369,7 @@ model = nn.Sequential(nn.Linear(67, 100),
 
 
 if prev_epochs > 0:
-    checkpoint = torch.load(f'/hpcwork/um106329/june_21/saved_models/{weighting_method}{fl_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs}_epochs_v10_GPU_weighted{weighting_method}{fl_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt')
+    checkpoint = torch.load(f'/hpcwork/um106329/june_21/saved_models/{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs}_epochs_v10_GPU_weighted{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt')
     model.load_state_dict(checkpoint["model_state_dict"])
 
 print(model)
@@ -445,7 +455,7 @@ max_stale_epochs = 100
 times = []
 
 
-with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
+with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
     log.write(f"{np.floor((tic-start)/60)} min {np.ceil((tic-start)%60)} s"+' Everything prepared for main training loop.\n')
 
 
@@ -466,11 +476,11 @@ for e in range(epochs):
             print('first batch done')
             print(f"Time for first batch: {np.floor((tb1-times[0])/60)} min {((tb1-times[0])%60)} s")
             
-            with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
+            with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
                 log.write(f"{np.floor((tb1-start)/60)} min {np.ceil((tb1-start)%60)} s"+' First batch done!\n')
         
         if weighting_method == '_ptetaflavloss' or weighting_method == '_flatptetaflavloss':
-            sample_weights = i[:, -1].to(device, non_blocking=True)
+            sample_weights = i[:, -1].to(device, non_blocking=True)  # extract the inputs only from the dataloader returns (remaining: weights)
             i = i[:, :-1].to(device, non_blocking=True)
         else: 
             i = i.to(device, non_blocking=True)
@@ -485,7 +495,11 @@ for e in range(epochs):
         else:
             output = model(i.float()) # can be omitted if the FastTensorDataLoader is used in the newer version with index_select (because it only works with float in the first place)
         '''
-        output = model(i.float())
+        if epsilon > 0:
+            output = model(fgsm_attack(epsilon,i.float(),j,model,criterion,dev=device))
+        else:
+            output = model(i.float())
+            
         loss = criterion(output, j)         
         del i
         del j
@@ -518,7 +532,7 @@ for e in range(epochs):
             tep1 = time.time()
             print('first training epoch done, now starting first evaluation')
              
-            with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
+            with open(f"/home/um106329/aisafety/june_21/train_models/status_logfiles/logfile{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_files_default_{default}_{n_samples}_jets.txt", "a") as log:
                 log.write(f"{np.floor((tep1-start)/60)} min {np.ceil((tep1-start)%60)} s"+' First training epoch done! Start first evaluation.\n')
             
             
@@ -605,17 +619,17 @@ for e in range(epochs):
         #if (e+1)%np.floor(epochs/10)==0:
         #    print(f"{(e+1)/epochs*100}% done. Epoch: {prev_epochs+e}\tTraining loss: {running_loss/total_len_train}\tValidation loss: {val_loss/total_len_val}")
             
-        torch.save({"epoch": prev_epochs+e, "model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(), "loss": running_loss/total_len_train, "val_loss": running_val_loss/total_len_val}, f'/hpcwork/um106329/june_21/saved_models/{weighting_method}{fl_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs+(e + 1)}_epochs_v10_GPU_weighted{weighting_method}{fl_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt')
+        torch.save({"epoch": prev_epochs+e, "model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(), "loss": running_loss/total_len_train, "val_loss": running_val_loss/total_len_val}, f'/hpcwork/um106329/june_21/saved_models/{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs+(e + 1)}_epochs_v10_GPU_weighted{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt')
         # I'm now saving the model both on /hpcwork (fast and mounted for the batch system) and /home (slow, but there are backups)
-        torch.save({"epoch": prev_epochs+e, "model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(), "loss": running_loss/total_len_train, "val_loss": running_val_loss/total_len_val}, f'/home/um106329/aisafety/june_21/train_models/saved_models/{weighting_method}{fl_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs+(e + 1)}_epochs_v10_GPU_weighted{weighting_method}{fl_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt')
+        torch.save({"epoch": prev_epochs+e, "model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(), "loss": running_loss/total_len_train, "val_loss": running_val_loss/total_len_val}, f'/home/um106329/aisafety/june_21/train_models/saved_models/{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs+(e + 1)}_epochs_v10_GPU_weighted{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}.pt')
 toc = time.time()
 #print(f"{(e+1)/epochs*100}% done. Epoch: {e}\tTraining loss: {running_loss/total_len_train}\tValidation loss: {running_val_loss/total_len_val}\nTraining complete. Time elapsed: {np.floor((toc-tic)/60)} min {np.ceil((toc-tic)%60)} s")
 print(f"Time elapsed: {np.floor((toc-tic)/60)} min {np.ceil((toc-tic)%60)} s")
 print(f"used {NUM_DATASETS} files, {prev_epochs+epochs} epochs, dropout 0.1 4x, learning rate {lrate}")
 
 
-torch.save(model, f'/hpcwork/um106329/june_21/saved_models/{weighting_method}{fl_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs+(e + 1)}_epochs_v10_GPU_weighted{weighting_method}{fl_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}_justmodel.pt')
-torch.save(model, f'/home/um106329/aisafety/june_21/train_models/saved_models/{weighting_method}{fl_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs+(e + 1)}_epochs_v10_GPU_weighted{weighting_method}{fl_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}_justmodel.pt')
+torch.save(model, f'/hpcwork/um106329/june_21/saved_models/{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs+(e + 1)}_epochs_v10_GPU_weighted{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}_justmodel.pt')
+torch.save(model, f'/home/um106329/aisafety/june_21/train_models/saved_models/{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_{default}_{n_samples}/model_{prev_epochs+(e + 1)}_epochs_v10_GPU_weighted{weighting_method}{fl_text}{at_text}_{NUM_DATASETS}_datasets_with_default_{default}_{n_samples}_justmodel.pt')
 
 times.append(toc)
 for p in range(epochs):
