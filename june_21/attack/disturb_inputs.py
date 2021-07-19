@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 
-def apply_noise(sample, scalers, magn=1e-2,offset=[0], default=0.001, dev="cpu"):
+def apply_noise(sample, magn=1e-2,offset=[0], default=0.001, dev="cpu"):
+    scalers = [torch.load(f'/hpcwork/um106329/june_21/scaler_{i}_with_default_{default}.pt') for i in range(67)]
     with torch.no_grad():
         if default == int(default):
             default = int(default)

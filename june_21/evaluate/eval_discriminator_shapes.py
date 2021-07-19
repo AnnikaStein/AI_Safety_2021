@@ -93,18 +93,19 @@ print('alpha',alphaparse)
 print('epsilon',epsilon)
 
 wm_def_text = {'_noweighting': 'No weighting', 
-               '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
-               '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
-               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
-               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)', 
+               '_ptetaflavloss' : r'$p_T, \eta$ reweighted',
+               '_flatptetaflavloss' : r'$p_T, \eta$ reweighted (Flat)',
+               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ reweighted (F.L.)', 
+               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ reweighted (Flat, F.L.)', 
               }
 
-more_text = [(f'_ptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{g})') for g in gamma] + \
-            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
-            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
-            [(f'_flatptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{g})') for g in gamma] + \
-            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
-            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , r'$p_T, \eta$ reweighted (FL $\gamma=$'+f'{g}, $\epsilon=$'+f'{e})') for g, a, e in zip(gamma,alphaparse,epsilon)]
+more_text = [(f'_ptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'{g})') for g in gamma] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ reweighted (Flat, F.L. $\gamma=$'+f'{g})') for g in gamma] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ reweighted (Flat, F.L. $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , r'$p_T, \eta$ reweighted (FL $\gamma=$'+f'{g}, $\epsilon=$'+f'{e})') for g, a, e in zip(gamma,alphaparse,epsilon)] + \
+            [(f'_ptetaflavloss_adv_tr_eps{e}' , r'$p_T, \eta$ reweighted ($\epsilon=$'+f'{e})') for e in epsilon]
 
 more_text_dict = {k:v for k, v in more_text}
 wm_def_text =  {**wm_def_text, **more_text_dict}
@@ -117,15 +118,15 @@ wm_def_text =  {**wm_def_text, **more_text_dict}
 colorcode = ['firebrick','magenta','cyan','darkgreen']
 colorcode_2 = ['#DA7479','#C89FD4','#63D8F1','#7DFDB4']  # from http://tristen.ca/hcl-picker/#/hlc/4/1/DA7479/7DFDB4
 #wm_def_text = {'_noweighting': 'No weighting', 
-#               '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
-#               '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
-#               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
-#               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)',
-#               f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma})', 
-#               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
-#               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r',$\alpha=$'+f'{alphaparse})', 
-#               f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma})', 
-#               f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})',
+#               '_ptetaflavloss' : r'$p_T, \eta$ reweighted',
+#               '_flatptetaflavloss' : r'$p_T, \eta$ reweighted (Flat)',
+#               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ reweighted (F.L.)', 
+#               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ reweighted (Flat, F.L.)',
+#               f'_ptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'{gamma})', 
+#               f'_ptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})', 
+#               f'_ptetaflavloss_focalloss_alpha{alphaparse}' : r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'2.0'+r',$\alpha=$'+f'{alphaparse})', 
+#               f'_flatptetaflavloss_focalloss_gamma{gamma}' : r'$p_T, \eta$ reweighted (Flat, F.L. $\gamma=$'+f'{gamma})', 
+#               f'_flatptetaflavloss_focalloss_gamma{gamma}_alpha{alphaparse}' : r'$p_T, \eta$ reweighted (Flat, F.L. $\gamma=$'+f'{gamma}'+r',$\alpha=$'+f'{alphaparse})',
 #              }
 wm_def_color = {'_noweighting': '#92638C', 
                '_ptetaflavloss' : '#F06644',
@@ -141,11 +142,12 @@ wm_def_color = {'_noweighting': '#92638C',
               }
 more_color = [(f'_ptetaflavloss_focalloss_gamma{g}' , '#FEC55C') for g in gamma] + \
             [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , '#FEC55C') for g, a in zip(gamma,alphaparse)] + \
-            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
+            [(f'_ptetaflavloss_focalloss_alpha{a}' , '#FEC55C') for a in alphaparse] + \
             [(f'_flatptetaflavloss_focalloss_gamma{g}' , '#4BC2D8') for g in gamma] + \
             [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , '#4BC2D8') for g, a in zip(gamma,alphaparse)] + \
             [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , '#FEC55C') for g, e in zip(gamma,epsilon)] + \
-            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}_adv_tr_eps{e}' , '#FEC55C') for g, a, e in zip(gamma,alphaparse,epsilon)]
+            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}_adv_tr_eps{e}' , '#FEC55C') for g, a, e in zip(gamma,alphaparse,epsilon)] + \
+            [(f'_ptetaflavloss_adv_tr_eps{e}' , '#FEC55C') for e in epsilon]
 
 more_color_dict = {k:v for k, v in more_color}
 wm_def_color =  {**wm_def_color, **more_color_dict}

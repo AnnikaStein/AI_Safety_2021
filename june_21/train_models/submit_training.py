@@ -67,7 +67,7 @@ else:
 
 factor_EPOCHS = epochs / 40.0
 if epsilon > 0:
-    factor_EPOCHS *= 1.25
+    factor_EPOCHS *= 1.55
 
 if NUM_DATASETS == 20:
     time = int(np.rint(time * factor_EPOCHS) + 1)

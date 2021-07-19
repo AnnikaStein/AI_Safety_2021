@@ -15,8 +15,11 @@ parser = argparse.ArgumentParser(description="Setup for training")
 parser.add_argument("files", type=int, help="Number of files for training")
 parser.add_argument("wm", help="Weighting method: _noweighting, _ptetaflavloss, _flatptetaflavloss or with additional _focalloss; specifying multiple weighting methods is possible (split by +)")
 parser.add_argument("default", type=float, help="Default value")  # new, based on Nik's work
-parser.add_argument("jets", help="Number of jets, if one does not want to use all jets for training, if all jets shall be used, type -1 (using multiple: split them by +)")
+parser.add_argument("jets", help="Number of jets, if one does not want to use all jets for training, if all jets shall be used, type _-1 (using multiple: split them by , like so: _-1,_-1,_-1)")
 args = parser.parse_args()
+
+# example: python plot_loss.py 278 '_ptetaflavloss_focalloss_gamma25.0+_ptetaflavloss_focalloss_gamma25.0_adv_tr_eps0.005+_ptetaflavloss_focalloss_gamma25.0_adv_tr_eps0.01' '0.001' '_-1,_-1,_-1'
+
 
 NUM_DATASETS = args.files
 weighting_method = args.wm
@@ -58,10 +61,12 @@ colorcode = ['darkblue', 'royalblue', 'forestgreen', 'limegreen', 'maroon','red'
 wm_epochs_so_far = {
     '_ptetaflavloss_focalloss_gamma40.0_alpha0.05,0.05,0.05,0.85' : 50,
     '_ptetaflavloss_focalloss_gamma30.0_alpha0.05,0.05,0.05,0.85' : 50,
-    '_ptetaflavloss_focalloss_gamma25.0' : 50,
+    '_ptetaflavloss_focalloss_gamma25.0' : 200,
     '_flatptetaflavloss_focalloss_gamma25.0' : 200,
     '_ptetaflavloss_focalloss_gamma13.0_adv_tr_eps0.005' : 15,
     '_ptetaflavloss_focalloss_gamma13.0' : 15,
+    '_ptetaflavloss_focalloss_gamma25.0_adv_tr_eps0.005' : 47,
+    '_ptetaflavloss_focalloss_gamma25.0_adv_tr_eps0.01' : 200,
     
 }
 
