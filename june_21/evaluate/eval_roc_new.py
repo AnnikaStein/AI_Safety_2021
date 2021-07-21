@@ -148,10 +148,8 @@ if do_minimal_eval == 'medium':
 #test_input_file_paths = [f'/hpcwork/um106329/april_21/scaled_TT/test_inputs_%d_with_default_{default}.pt' % k for k in range(0,NUM_DATASETS)]
 
 
-test_inputs = torch.cat(tuple(torch.load(ti) for ti in test_input_file_paths)).float()
+test_inputs = torch.cat(tuple(torch.load(ti) for ti in test_input_file_paths))
 print('test inputs done')
-len_test = len(test_inputs)
-print('number of test inputs', len_test)
 
 #test_target_file_paths = [f'/hpcwork/um106329/april_21/scaled_TT/test_targets_%d_with_default_{default}.pt' % k for k in range(0,NUM_DATASETS)]
 #DeepCSV_testset_file_paths = [f'/hpcwork/um106329/april_21/scaled_TT/DeepCSV_testset_%d_with_default_{default}.pt' % k for k in range(0,NUM_DATASETS)]
@@ -160,6 +158,14 @@ print('number of test inputs', len_test)
 #test_targets = torch.cat(tuple(torch.load(ti) for ti in test_target_file_paths)).float()
 test_targets = torch.cat(tuple(torch.load(ti) for ti in test_target_file_paths))
 print('test targets done')
+
+# currently, all test inputs (from 278 files!) at once is too much for memory in the later steps --> use every third jet
+if do_minimal_eval == 'no':
+    test_inputs = test_inputs[::3]
+    test_targets = test_targets[::3]
+    
+len_test = len(test_targets)
+print('number of test inputs', len_test)
 
 jetFlavour = test_targets+1
 
@@ -771,11 +777,53 @@ else:
                 #print(individual_legend)
                 #sys.exit()
         else:
-            individual_legend = ['ToDo' for l in range(n_compare)]
-            used_colours = possible_colours[:n_compare]
-            addition_leg_text = 'ToDo'
-            linestyles = ['-' for l in range(n_compare)]
+            #individual_legend = ['ToDo' for l in range(n_compare)]
+            #used_colours = possible_colours[:n_compare]
+            #addition_leg_text = 'ToDo'
+            #linestyles = ['-' for l in range(n_compare)]
+            # ToDo
+            linestyles = []
+            used_colours = []
+            individual_legend = []
+            colourpointer = 0
+            n_raw = 0
+            for i,s in enumerate(setups):
+                if (i>0) and (i%2 == 0):
+                    colourpointer += 1
+                used_colours.append(possible_colours[colourpointer])
+                if ('sigma' in s) or ('eps' in s):
+                    linestyles.append('--')
+                    if 'sigma' in s:
+                        sig = s.split('sigma')[-1]
+                        individual_legend.append(f'Noise $\sigma=${sig}')
+                        
+                    else:
+                        eps = s.split('eps')[-1]
+                        individual_legend.append(f'FGSM $\epsilon=${eps}')
+                        
+                else:
+                    linestyles.append('-')
+                    individual_legend.append('Raw')
+                    n_raw += 1
+            addition_leg_text = ''
+            if same_epoch:
+                addition_leg_text = addition_leg_text + f', Epoch {at_epoch}'
+            else:
+                for e in range(n_compare):
+                    individual_legend[e] = f'Epoch {epochs[e]} ' + individual_legend[e]
+            if same_wm:
+                addition_leg_text = addition_leg_text + '\n'+wm_def_text[weighting_method]
+                if n_raw == 1:
+                    used_colours = possible_colours
+            else:
+                for w in range(n_compare):
+                    individual_legend[w] = individual_legend[w] + f'\n{wm_def_text[wmets[w]]}' 
         
+        
+        #print(setups)
+        #print(used_colours)
+        #print(individual_legend)
+        #sys.exit()
         # ................................................................................
         #
         #                              Prepare inputs, targets
@@ -907,24 +955,24 @@ else:
             # use raw or distorted
             if 'raw' in setups[i]:
                 matching_predictions = model(matching_inputs.float()).detach().numpy()
-                if ('adv' in wmets[i]) and has_basic:
-                    this_line = '--'
-                else:
-                    this_line = '-'
-                setup_text = ''
+                #if ('adv' in wmets[i]) and has_basic:
+                #    this_line = '--'
+                #else:
+                #    this_line = '-'
+                #setup_text = ''
 
             elif 'sigma' in setups[i]:
                 sig = float(setups[i].split('sigma')[-1])
                 matching_predictions = model(apply_noise(matching_inputs.float(),sig)).detach().numpy()
-                this_line = '--'
-                setup_text = f'Noise $\sig={sig}$'   
+                #this_line = '--'
+                #setup_text = f'Noise $\sig={sig}$'   
                 
             elif 'eps' in setups[i]:
                 eps = float(setups[i].split('eps')[-1])
                 #matching_inputs.requires_grad = True
                 matching_predictions = model(fgsm_attack(eps,matching_inputs.float(),matching_targets,model,criterion,dev=device)).detach().numpy()
-                this_line = '--'      
-                setup_text = f'FGSM $\epsilon={eps}$'   
+                #this_line = '--'      
+                #setup_text = f'FGSM $\epsilon={eps}$'   
             #matching_predictions = np.float32(matching_predictions)                                 
             print('Predictions done.')
 
@@ -942,28 +990,28 @@ else:
             if outdisc == 'b':
                 fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==0, torch.ones(len_test), torch.zeros(len_test)),matching_predictions[:,0])
                 customauc = metrics.auc(fpr,tpr)
-                plt.plot(fpr,tpr,label=f'Classifier: {this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                plt.plot(fpr,tpr,label=f'{this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
                 print(f"auc for b-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
                 legtitle = 'ROC b tagging'+addition_leg_text
                 legloc = 'lower right'
             elif outdisc == 'bb':
                 fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==1, torch.ones(len_test), torch.zeros(len_test)),matching_predictions[:,1])
                 customauc = metrics.auc(fpr,tpr)
-                plt.plot(fpr,tpr,label=f'Classifier: {this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                plt.plot(fpr,tpr,label=f'{this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
                 print(f"auc for bb-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
                 legtitle = 'ROC bb tagging'+addition_leg_text
                 legloc = 'lower right'
             elif outdisc == 'c':
                 fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==2, torch.ones(len_test), torch.zeros(len_test)),matching_predictions[:,2])
                 customauc = metrics.auc(fpr,tpr)
-                plt.plot(fpr,tpr,label=f'Classifier: {this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                plt.plot(fpr,tpr,label=f'{this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
                 print(f"auc for c-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
                 legtitle = 'ROC c tagging'+addition_leg_text
                 legloc = 'lower right'
             elif outdisc == 'udsg':
                 fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==3, torch.ones(len_test), torch.zeros(len_test)),matching_predictions[:,3])
                 customauc = metrics.auc(fpr,tpr)
-                plt.plot(fpr,tpr,label=f'Classifier: {this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                plt.plot(fpr,tpr,label=f'{this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
                 print(f"auc for udsg-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
                 legtitle = 'ROC udsg tagging'+addition_leg_text
                 legloc = 'lower right'
@@ -978,7 +1026,7 @@ else:
 
                 fpr,tpr,_ = metrics.roc_curve((matching_targets==0) | (matching_targets==1),(matching_predictions[:,0]+matching_predictions[:,1])/(matching_predictions[:,0]+matching_predictions[:,1]+matching_predictions[:,3]))
                 customauc = metrics.auc(fpr,tpr)
-                plt.plot(tpr,fpr,label=f'Classifier: {this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                plt.plot(tpr,fpr,label=f'{this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
                 print(f"auc for bvl-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
                 legtitle = 'ROC B vs L'+addition_leg_text
                 legloc = 'upper left'
@@ -991,7 +1039,7 @@ else:
                 del matching_predictions
                 gc.collect()
                 customauc = metrics.auc(fpr,tpr)
-                plt.plot(tpr,fpr,label=f'Classifier: {this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                plt.plot(tpr,fpr,label=f'{this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
                 print(f"auc for bvc-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
                 legtitle = 'ROC B vs C'+addition_leg_text
                 legloc = 'upper left'
@@ -1004,7 +1052,7 @@ else:
                 del matching_predictions
                 gc.collect()
                 customauc = metrics.auc(fpr,tpr)
-                plt.plot(tpr,fpr,label=f'Classifier: {this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                plt.plot(tpr,fpr,label=f'{this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
                 print(f"auc for cvb-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
                 legtitle = 'ROC C vs B'+addition_leg_text
                 legloc = 'upper left'
@@ -1017,10 +1065,10 @@ else:
                 del matching_predictions
                 gc.collect()
                 customauc = metrics.auc(fpr,tpr)
-                plt.plot(tpr,fpr,label=f'Classifier: {this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                plt.plot(tpr,fpr,label=f'{this_legtext},\nAUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
                 print(f"auc for cvl-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
                 legtitle = 'ROC C vs L'+addition_leg_text
-                legloc = 'upper left'
+                legloc = 'lower right'
         
         if plot_deepcsv:
             # copy code from above but switch everything to DeepCSV, use black colour
@@ -1081,13 +1129,21 @@ else:
             plt.ylabel('true positive rate')
         
                                              
-        plt.legend(title=legtitle,loc=legloc,fontsize=20,title_fontsize=23)
+        leg = plt.legend(title=legtitle,loc=legloc,fontsize=20,title_fontsize=23)
+        if 'right' in legloc:
+            aligned = 'right'
+        else:
+            aligned = 'left'
+        leg._legend_box.align = aligned
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
         if plot_deepcsv:
             dcsv_text = '_with_deepcsv'
         else:
             dcsv_text = ''
+        weighting_method = list(dict.fromkeys(wmets))
+        at_epoch = list(dict.fromkeys(epochs))
+        compare_setup = list(dict.fromkeys(setups))
         #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/compare/roc_{outdisc}_weighting_method{wmets}_at_epoch_{epochs}_setup_{setups}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/compare/roc_{outdisc}_wm{weighting_method}_ep{at_epoch}_setup{compare_setup}{dcsv_text}_{len_test}_j_tr_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')
         plt.show(block=False)
