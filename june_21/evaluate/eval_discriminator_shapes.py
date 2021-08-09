@@ -27,7 +27,7 @@ device = torch.device("cpu")
 
 
 #This is just some plot styling
-plt.style.use(hep.cms.style.ROOT)
+plt.style.use([hep.style.ROOT, hep.style.fira, hep.style.firamath])
 
 plt.ioff()
 
@@ -93,19 +93,20 @@ print('alpha',alphaparse)
 print('epsilon',epsilon)
 
 wm_def_text = {'_noweighting': 'No weighting', 
-               '_ptetaflavloss' : r'$p_T, \eta$ reweighted',
-               '_flatptetaflavloss' : r'$p_T, \eta$ reweighted (Flat)',
-               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ reweighted (F.L.)', 
-               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ reweighted (Flat, F.L.)', 
+               '_ptetaflavloss' : r'$p_T, \eta$ rew.',
+               '_flatptetaflavloss' : r'$p_T, \eta$ rew. (Flat)',
+               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ rew. (F.L. $\gamma=$2.0)', 
+               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ rew. (Flat, F.L. $\gamma=$2.0)', 
               }
 
-more_text = [(f'_ptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'{g})') for g in gamma] + \
-            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
-            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ reweighted (F.L. $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
-            [(f'_flatptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ reweighted (Flat, F.L. $\gamma=$'+f'{g})') for g in gamma] + \
-            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ reweighted (Flat, F.L. $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
-            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , r'$p_T, \eta$ reweighted (FL $\gamma=$'+f'{g}, $\epsilon=$'+f'{e})') for g, a, e in zip(gamma,alphaparse,epsilon)] + \
-            [(f'_ptetaflavloss_adv_tr_eps{e}' , r'$p_T, \eta$ reweighted ($\epsilon=$'+f'{e})') for e in epsilon]
+more_text = [(f'_ptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'{g})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ rew. (Flat, F.L. $\gamma=$'+f'{g})') for g in gamma] + \
+            [(f'_flatptetaflavloss_focalloss' , r'$p_T, \eta$ rew. (Flat, F.L. $\gamma=$'+f'2.0)') for g in gamma] + \
+            [(f'_ptetaflavloss_focalloss' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'2.0)') for g in gamma] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ rew. (Flat, F.L. $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'{g}, $\epsilon=$'+f'{e})') for g, a, e in zip(gamma,alphaparse,epsilon)]
 
 more_text_dict = {k:v for k, v in more_text}
 wm_def_text =  {**wm_def_text, **more_text_dict}
@@ -147,7 +148,9 @@ more_color = [(f'_ptetaflavloss_focalloss_gamma{g}' , '#FEC55C') for g in gamma]
             [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , '#4BC2D8') for g, a in zip(gamma,alphaparse)] + \
             [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , '#FEC55C') for g, e in zip(gamma,epsilon)] + \
             [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}_adv_tr_eps{e}' , '#FEC55C') for g, a, e in zip(gamma,alphaparse,epsilon)] + \
-            [(f'_ptetaflavloss_adv_tr_eps{e}' , '#FEC55C') for e in epsilon]
+            [(f'_ptetaflavloss_adv_tr_eps{e}' , '#FEC55C') for e in epsilon] + \
+            [(f'_flatptetaflavloss_focalloss' , '#4BC2D8') for g in gamma] + \
+            [(f'_ptetaflavloss_focalloss' , '#FEC55C') for g in gamma]
 
 more_color_dict = {k:v for k, v in more_color}
 wm_def_color =  {**wm_def_color, **more_color_dict}
@@ -408,7 +411,9 @@ with torch.no_grad():
             ax4.ticklabel_format(scilimits=(-5,5))
 
             fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
-            fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+            fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+            fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+            fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
             gc.collect()
             plt.show(block=False)
             time.sleep(5)
@@ -453,7 +458,9 @@ with torch.no_grad():
             ax4.ticklabel_format(scilimits=(-5,5))
 
             fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
-            fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+            fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+            fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+            fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{e}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
             gc.collect()
             plt.show(block=False)
             time.sleep(5)
@@ -667,7 +674,9 @@ with torch.no_grad():
 
 
         fig.suptitle(f'KS test statistic, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/KS_test_nnplus1_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KS_test_nnplus1_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KS_test_nnplus1_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KS_test_nnplus1_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -748,7 +757,9 @@ with torch.no_grad():
 
 
         fig.suptitle(f'KS p-values, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/KS_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KS_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KS_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KS_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -829,7 +840,9 @@ with torch.no_grad():
 
 
         fig.suptitle(f'KL divergences, {wm_text}\nAfter {e} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/KL_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KL_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KL_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/KL_test_nnplus1_pvalues_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -919,7 +932,9 @@ with torch.no_grad():
         ax4.ticklabel_format(scilimits=(-5,5))
 
         fig.suptitle(f'Classifier and DeepCSV outputs\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -989,8 +1004,10 @@ with torch.no_grad():
         dcsv_ax2 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probc','probudsg'),ax=ax2,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax3 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probudsg'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax4 = hist.plot1d(classifierHist['DeepCSV'].sum('flavour','probb','probbb','probc'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
-        ax3.legend(loc='upper right',title=f'Outputs',ncol=1,fontsize=18,title_fontsize=19)
-        ax1.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
+        #ax3.legend(loc='upper right',title=f'Outputs',ncol=1,fontsize=18,title_fontsize=19,facecolor='k', framealpha=0.3)
+        #ax2.legend(loc='upper right',ncol=1,fontsize=18,facecolor='k', framealpha=0.3)
+        ax2.legend(loc='upper right',ncol=1,fontsize=18)
+        ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
 
         ax1.set_ylim(bottom=0, auto=True)
         ax2.set_ylim(bottom=0, auto=True)
@@ -999,8 +1016,8 @@ with torch.no_grad():
 
         ax1.set_yscale('log')
         ax2.set_yscale('log')
-        #ax3.set_yscale('log')
-        #ax4.set_yscale('log')
+        ax3.set_yscale('log')
+        ax4.set_yscale('log')
 
         ax1.autoscale(True)
         ax2.autoscale(True)
@@ -1009,11 +1026,13 @@ with torch.no_grad():
 
         #ax1.ticklabel_format(scilimits=(-5,5))
         #ax2.ticklabel_format(scilimits=(-5,5))
-        ax3.ticklabel_format(scilimits=(-5,5))
-        ax4.ticklabel_format(scilimits=(-5,5))
-
-        fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        #ax3.ticklabel_format(scilimits=(-5,5))
+        #ax4.ticklabel_format(scilimits=(-5,5))
+        ax1.text(0.25,1e6,f'{wm_text}, epoch {at_epoch}',fontsize=15)
+        #fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -1021,7 +1040,6 @@ with torch.no_grad():
         plt.cla()
         plt.close('all')
         gc.collect(2)
-        
         
         # =================================================================================================================
         # 
@@ -1064,7 +1082,9 @@ with torch.no_grad():
         ax4.ticklabel_format(scilimits=(-5,5))
 
         fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -1114,7 +1134,9 @@ with torch.no_grad():
         ax4.ticklabel_format(scilimits=(-5,5))
 
         fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/stacked_v2_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_v2_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_v2_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/stacked_v2_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -1180,7 +1202,7 @@ with torch.no_grad():
         dcsv_ax2 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','cvb','cvl'),ax=ax2,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax3 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','bvc','cvl'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax4 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','bvc','cvb'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
-        ax1.legend(loc='upper center',title=f'{wm_text}, epoch {at_epoch}',ncol=1,fontsize=17,title_fontsize=17.5)
+        ax1.legend(loc=(0.67,0.7),ncol=1,fontsize=13.5)
         ax3.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
 
         ax1.set_ylim(bottom=0, auto=True)
@@ -1202,9 +1224,11 @@ with torch.no_grad():
         #ax2.ticklabel_format(scilimits=(-5,5))
         #ax3.ticklabel_format(scilimits=(-5,5))
         #ax4.ticklabel_format(scilimits=(-5,5))
-
+        ax4.text(0.49,5e5,f'{wm_text},\nepoch {at_epoch}',fontsize=14)
         #fig.suptitle(f'Classifier and DeepCSV discriminators, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/discriminators_versus_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/discriminators_versus_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/discriminators_versus_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/discriminators_versus_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -1254,7 +1278,9 @@ with torch.no_grad():
         #ax4.ticklabel_format(scilimits=(-5,5))
 
         #fig.suptitle(f'Classifier and DeepCSV discriminators, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/discriminators_versus_stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/discriminators_versus_stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/discriminators_versus_stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/discriminators_versus_stacked_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.svg', bbox_inches='tight')
         gc.collect()
         plt.show(block=False)
         time.sleep(5)
@@ -1346,7 +1372,9 @@ with torch.no_grad():
                 ax4.legend()
 
                 fig.suptitle(f'Inputs in Prob(udsg) bin [{bins[b]:.2f},{bins[b+1]:.2f}], {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
-                fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/input_histograms_by_tagger_outputs/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}_Probudsg_bin_{b}.png', bbox_inches='tight', dpi=400)
+                fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/input_histograms_by_tagger_outputs/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}_Probudsg_bin_{b}.png', bbox_inches='tight', dpi=400)
+                fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/input_histograms_by_tagger_outputs/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}_Probudsg_bin_{b}.pdf', bbox_inches='tight')
+                fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/input_histograms_by_tagger_outputs/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}_Probudsg_bin_{b}.svg', bbox_inches='tight')
                 gc.collect()
                 plt.show(block=False)
                 time.sleep(5)

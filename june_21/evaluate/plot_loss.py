@@ -40,18 +40,20 @@ print('alpha',alphaparse)
 print('epsilon',epsilon)
 
 wm_def_text = {'_noweighting': 'No weighting', 
-               '_ptetaflavloss' : r'$p_T, \eta$ Reweighting',
-               '_flatptetaflavloss' : r'$p_T, \eta$ Reweighting (Flat)',
-               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Focal Loss)', 
-               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ Reweighting (Flat, Focal Loss)', 
+               '_ptetaflavloss' : r'$p_T, \eta$ rew.',
+               '_flatptetaflavloss' : r'$p_T, \eta$ rew. (Flat)',
+               '_ptetaflavloss_focalloss' : r'$p_T, \eta$ rew. (F.L. $\gamma=$2.0)', 
+               '_flatptetaflavloss_focalloss' : r'$p_T, \eta$ rew. (Flat, F.L. $\gamma=$2.0)', 
               }
 
-more_text = [(f'_ptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{g})') for g, a in zip(gamma,alphaparse)] + \
-            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
-            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ Reweighting (Focal Loss $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
-            [(f'_flatptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{g})') for g in gamma] + \
-            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ Reweighting (Flat, Focal Loss $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
-            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , r'$p_T, \eta$ reweighted (FL $\gamma=$'+f'{g}, $\epsilon=$'+f'{e})') for g, a, e in zip(gamma,alphaparse,epsilon)]
+more_text = [(f'_ptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'{g})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_alpha{a}' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'2.0'+r', $\alpha=$'+f'{a})') for a in alphaparse] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}' , r'$p_T, \eta$ rew. (Flat, F.L. $\gamma=$'+f'{g})') for g in gamma] + \
+            [(f'_flatptetaflavloss_focalloss' , r'$p_T, \eta$ rew. (Flat, F.L. $\gamma=$'+f'2.0)') for g in gamma] + \
+            [(f'_ptetaflavloss_focalloss' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'2.0)') for g in gamma] + \
+            [(f'_flatptetaflavloss_focalloss_gamma{g}_alpha{a}' , r'$p_T, \eta$ rew. (Flat, F.L. $\gamma=$'+f'{g}'+r', $\alpha=$'+f'{a})') for g, a in zip(gamma,alphaparse)] + \
+            [(f'_ptetaflavloss_focalloss_gamma{g}_adv_tr_eps{e}' , r'$p_T, \eta$ rew. (F.L. $\gamma=$'+f'{g}, $\epsilon=$'+f'{e})') for g, a, e in zip(gamma,alphaparse,epsilon)]
 
 more_text_dict = {k:v for k, v in more_text}
 wm_def_text =  {**wm_def_text, **more_text_dict}
@@ -63,6 +65,8 @@ wm_epochs_so_far = {
     '_ptetaflavloss_focalloss_gamma30.0_alpha0.05,0.05,0.05,0.85' : 50,
     '_ptetaflavloss_focalloss_gamma25.0' : 200,
     '_flatptetaflavloss_focalloss_gamma25.0' : 200,
+    '_flatptetaflavloss_focalloss' : 230,
+    '_ptetaflavloss_focalloss' : 250,
     '_ptetaflavloss_focalloss_gamma13.0_adv_tr_eps0.005' : 15,
     '_ptetaflavloss_focalloss_gamma13.0' : 15,
     '_ptetaflavloss_focalloss_gamma25.0_adv_tr_eps0.005' : 47,
@@ -85,8 +89,8 @@ for k,wm in enumerate(wmets):
         all_val_losses.append(checkpoint['val_loss'])
         
     all_epochs = np.arange(1,wm_epochs_so_far[wm]+1)  
-    plt.plot(all_epochs, all_tr_losses,color=colorcode[k*2],label=f'Training loss\n({wm_def_text[wm]})')
-    plt.plot(all_epochs, all_val_losses,color=colorcode[k*2+1],label=f'Validation loss\n({wm_def_text[wm]})')
+    plt.plot(all_epochs, all_tr_losses,color=colorcode[k*2],label=f'Training loss ({wm_def_text[wm]})')
+    plt.plot(all_epochs, all_val_losses,color=colorcode[k*2+1],label=f'Validation loss ({wm_def_text[wm]})')
         
 plt.title(f"Training history", y=1.02)
 plt.xlabel('epoch')
@@ -94,3 +98,5 @@ plt.ylabel('loss')
 plt.legend()
 prev_epochs = [wm_epochs_so_far[wm] for wm in wmets]
 plt.savefig(f'/home/um106329/aisafety/june_21/evaluate/loss_plots/{NUM_DATASETS}_files_{prev_epochs}_epochs_train_history_wm{wmets}_default_{default}_{all_n_samples}_samples.png', bbox_inches='tight', dpi=400, facecolor='w', transparent=False)
+plt.savefig(f'/home/um106329/aisafety/june_21/evaluate/loss_plots/{NUM_DATASETS}_files_{prev_epochs}_epochs_train_history_wm{wmets}_default_{default}_{all_n_samples}_samples.svg', bbox_inches='tight')
+plt.savefig(f'/home/um106329/aisafety/june_21/evaluate/loss_plots/{NUM_DATASETS}_files_{prev_epochs}_epochs_train_history_wm{wmets}_default_{default}_{all_n_samples}_samples.pdf', bbox_inches='tight')
