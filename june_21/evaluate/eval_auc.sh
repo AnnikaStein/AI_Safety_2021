@@ -35,4 +35,3 @@ conda activate my-env
 # python eval_roc_new.py '278' 31,40 BvL_eps0.01 'no' ${WM} '0.001' '-1' 'yes' 'yes' '-1' 'yes' 'AUC'
 # python eval_roc_new.py '278' \'${START},${END}\' ${COMPARESETUP} 'no' ${WM} '0.001' '-1' 'yes' 'yes' '-1' 'yes' 'AUC'
 python eval_roc_new.py ${FILES} ${START},${END} ${COMPARESETUP} ${PLOTDEEPCSV} ${WM} ${DEFAULT} ${JETS} ${DOMINIMAL_EVAL} ${ADD_AXIS} ${FGSM_SETUP} ${LOG_AXIS} ${SAVE_MODE}
-

@@ -13,7 +13,7 @@ import argparse
 
 
 parser = argparse.ArgumentParser(description="Setup for input evaluation")
-parser.add_argument('-v',"--variable", type=int, help="Index of input variable",default=0)
+parser.add_argument('-v',"--variable", help="Index of input variable",default='0,0')
 parser.add_argument('-a',"--attack", help="The type of the attack, noise or fgsm",default='fgsm')
 parser.add_argument('-r',"--fixRange", help="Use predefined range (yes) or just as is (no)",default='no')
 parser.add_argument('-pa',"--para", help="Parameter for attack or noise (epsilon or sigma), can be comma-separated.",default='0.01,0.02')
@@ -49,23 +49,28 @@ print('Shell script is located at:\t',shPath)
 
 variables = [int(i) for i in variable.split(',')]
 
+parameters = [float(p) for p in para.split(',')]
 
-time = 33
+if attack == 'noise':
+    time = 113
+else:
+    time = 163
 
 #sys.exit()
 
-for index in variables:
+for index in range(variables[0],variables[1]+1):
     submit_command = ("sbatch "
-            "--time=00:{9}:00 "
-            "--job-name=Inputs_{0}_{1}_{2}_{3}_{4}_{5}_{6}_{7}_{8} "
-            "--mem-per-cpu=75G "
-            "--export=VARI={0},ATTACK={1},FIXRANGE={2},PARA={3},FILES={4},WM={5},DEFAULT={6},JETS={7},DOMINIMAL_EVAL={8} {10}eval_inputs.sh").format(index,attack,fixRange,para,NUM_DATASETS,weighting_method,default,n_samples,do_minimal_eval, time, shPath)
+            "--time=00:{11}:00 "
+            "--job-name=Inputs_{0}_{1}_{2}_{3}_{4}_{5}_{6}_{7}_{8}_{9}_{10} "
+            #"--mem-per-cpu=24G "
+            "--mem-per-cpu=34G "
+            "--export=VARI={0},ATTACK={1},FIXRANGE={2},PARA1={3},PARA2={4},FILES={5},PREVEP={6},WM={7},DEFAULT={8},JETS={9},DOMINIMAL_EVAL={10} {12}eval_inputs.sh").format(index,attack,fixRange,parameters[0],parameters[1],NUM_DATASETS,at_epoch,weighting_method,default,n_samples,do_minimal_eval, time, shPath)
     
     print(submit_command)
-    userinput = input("Submit job? (y/n) ").lower() == 'y'
-    if userinput:
+    #userinput = input("Submit job? (y/n) ").lower() == 'y'
+    #if userinput:
+    if True:
         exit_status = subprocess.call(submit_command, shell=True)
         if exit_status==1:  # Check to make sure the job submitted
             print("Job {0} failed to submit".format(submit_command))
         print("Done submitting jobs!")
-

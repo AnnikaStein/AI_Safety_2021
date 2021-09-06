@@ -83,6 +83,8 @@ print('gamma',gamma)
 print('alpha',alphaparse)
 print('epsilon',epsilon)
 
+colorcode = ['firebrick','magenta','cyan','darkgreen']
+
 wm_def_text = {'_noweighting': 'No weighting', 
                '_ptetaflavloss' : r'$p_T, \eta$ rew.',
                '_flatptetaflavloss' : r'$p_T, \eta$ rew. (Flat)',
@@ -129,7 +131,7 @@ if do_minimal_eval == 'medium':
     #DeepCSV_testset_file_paths = np.array([f'/hpcwork/um106329/may_21/scaled_QCD/DeepCSV_testset_%d_with_default_{default}.pt' % k for k in range(229)] + [f'/hpcwork/um106329/may_21/scaled_TT/DeepCSV_testset_%d_with_default_{default}.pt' % k for k in range(49)])[some_files]
     
     
-    
+test_targets = torch.cat(tuple(torch.load(ti).to(device) for ti in test_target_file_paths))
 
 relative_entropies = []
 
@@ -180,9 +182,13 @@ else:
 print('Loaded model and corresponding criterion.')
         
 def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
+    print(f'Doing {definitions.display_names[variable]} now.')
+    unit = '' if definitions.inputVar_units[variable] == '' else definitions.inputVar_units[variable]
+    xunit = '' if unit == '' else f' [{unit}]'
     xmagn = []
-    #for s in range(0, len(test_target_file_paths)):
-    for s in range(0, 1):
+    # to test with one file only for quick checks
+    #for s in range(0, 1):
+    for s in range(0, len(test_target_file_paths)):
         #scalers = torch.load(scalers_file_paths[s])
         #scalers = all_scalers[s]
         #test_inputs =  torch.load(test_input_file_paths[s]).to(device).float()
@@ -191,10 +197,17 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
         #train_inputs =  torch.load(train_input_file_paths[s]).to(device).float()
         #test_targets =  torch.load(test_target_file_paths[s]).to(device)
         all_targets =  torch.load(test_target_file_paths[s]).to(device)
+        
+        # if you want to test on one file only (replaces the total test_target variable with the current all_targets variable)
+        #global test_targets
+        #test_targets = all_targets
+        
         #val_targets =  torch.load(val_target_file_paths[s]).to(device)
         #train_targets =  torch.load(train_target_file_paths[s]).to(device)
         #all_inputs = torch.cat((test_inputs,val_inputs,train_inputs))
         #all_targets = torch.cat((test_targets,val_targets,train_targets))
+        
+        integervars = [59,63,64,65,66]
         
         for i, m in enumerate(param):
             if s > 0:
@@ -202,7 +215,6 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
                     xadv = np.concatenate((xmagn[i], scalers[variable].inverse_transform(fgsm_attack(epsilon=param[i],sample=all_inputs,targets=all_targets,thismodel=model,thiscriterion=criterion,reduced=reduced)[:,variable].cpu())))
                 else:
                     xadv = np.concatenate((xmagn[i], scalers[variable].inverse_transform(apply_noise(all_inputs,magn=param[i])[:,variable].cpu())))
-                integervars = [59,63,64,65,66]
                 if variable in integervars:
                     xadv = np.rint(xadv)
                 xmagn[i] = xadv
@@ -211,7 +223,6 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
                     xadv = scalers[variable].inverse_transform(fgsm_attack(epsilon=param[i],sample=all_inputs,targets=all_targets,thismodel=model,thiscriterion=criterion,reduced=reduced)[:,variable].cpu())
                 else:
                     xadv = scalers[variable].inverse_transform(apply_noise(all_inputs,magn=param[i])[:,variable].cpu())
-                integervars = [59,63,64,65,66]
                 if variable in integervars:
                     xadv = np.rint(xadv)
                     
@@ -223,30 +234,87 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
         gc.collect()
     
      
-    minimum = min([min(xmagn[i]) for i in range(len(param))])
-    maximum = max([max(xmagn[i]) for i in range(len(param))])
+    minimum = min([min(xmagn[i]) for i in range(len(param))])-0.01
+    maximum = max([max(xmagn[i]) for i in range(len(param))])+0.01
+    print(minimum, maximum)
     
-    bins = np.linspace(minimum+(maximum-minimum)/100/2,maximum-(maximum-minimum)/100/2,100)
+    if variable not in integervars:
+        # bins are actually bin centers (to plot the errorbars in the ratio plot)
+        bins = np.linspace(minimum+(maximum-minimum)/100/2,maximum-(maximum-minimum)/100/2,100)
+
+        compHist = hist.Hist("Jets",
+                              hist.Cat("sample","sample name"),
+                              hist.Bin("prop",definitions.display_names[variable]+xunit,100,minimum,maximum))
+        newHist = hist.Hist("Jets",
+                              hist.Cat("sample","sample name"),
+                              hist.Cat("flavour","flavour of the jet"),
+                              hist.Bin("prop",definitions.display_names[variable]+xunit,100,minimum,maximum))
     
-    
-    compHist = hist.Hist("Jets",
+    elif variable in integervars:
+        #bins = np.arange(0,maximum+1)
+        bin_edges = np.arange(int(minimum),int(maximum)+2)-0.5
+        #bins = np.linspace(minimum+(maximum-minimum)/100/2,maximum-(maximum-minimum)/100/2,100)
+        bins = (bin_edges[0:-1]+bin_edges[1:])/2
+        compHist = hist.Hist("Jets",
                           hist.Cat("sample","sample name"),
-                          hist.Bin("prop",definitions.display_names[variable],100,minimum,maximum))
+                          hist.Bin("prop",definitions.display_names[variable]+unit,bin_edges))
+        newHist = hist.Hist("Jets",
+                          hist.Cat("sample","sample name"),
+                          hist.Cat("flavour","flavour of the jet"),
+                          hist.Bin("prop",definitions.display_names[variable]+unit,bin_edges))
+    
+    bin_size_original = bins[2] - bins[1]
+    bin_size_reduced = round(bin_size_original,definitions.format_unit_digits[variable])
+    
     compHist.fill(sample="raw",prop=xmagn[0])
+    newHist.fill(sample="raw",flavour='b-jets',prop=xmagn[0][test_targets == 0])
+    newHist.fill(sample="raw",flavour='bb-jets',prop=xmagn[0][test_targets == 1])
+    newHist.fill(sample="raw",flavour='c-jets',prop=xmagn[0][test_targets == 2])
+    newHist.fill(sample="raw",flavour='udsg-jets',prop=xmagn[0][test_targets == 3])
     
     for si in range(1,len(param)):
         if mode == 'fgsm':
             compHist.fill(sample=f"fgsm $\epsilon$={param[si]}",prop=xmagn[si])
+            newHist.fill(sample=f"fgsm $\epsilon$={param[si]}",flavour='b-jets',prop=xmagn[si][test_targets == 0])
+            newHist.fill(sample=f"fgsm $\epsilon$={param[si]}",flavour='bb-jets',prop=xmagn[si][test_targets == 1])
+            newHist.fill(sample=f"fgsm $\epsilon$={param[si]}",flavour='c-jets',prop=xmagn[si][test_targets == 2])
+            newHist.fill(sample=f"fgsm $\epsilon$={param[si]}",flavour='udsg-jets',prop=xmagn[si][test_targets == 3])
         else:
             compHist.fill(sample=f"noise $\sigma$={param[si]}",prop=xmagn[si])
+            newHist.fill(sample=f"noise $\sigma$={param[si]}",flavour='b-jets',prop=xmagn[si][test_targets == 0])
+            newHist.fill(sample=f"noise $\sigma$={param[si]}",flavour='bb-jets',prop=xmagn[si][test_targets == 1])
+            newHist.fill(sample=f"noise $\sigma$={param[si]}",flavour='c-jets',prop=xmagn[si][test_targets == 2])
+            newHist.fill(sample=f"noise $\sigma$={param[si]}",flavour='udsg-jets',prop=xmagn[si][test_targets == 3])
             
-    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2.5],'hspace': .25})
-    hist.plot1d(compHist,overlay='sample',ax=ax1,line_opts={'c':['#ff7f0e', '#2ca02c', '#1f77b4']})
+    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2],'hspace': .25})
+    if len(param) == 3:
+        hist.plot1d(compHist,overlay='sample',ax=ax1,line_opts={'c':['#ff7f0e', '#2ca02c', '#1f77b4']})
+    elif len(param) == 2:
+        hist.plot1d(compHist,overlay='sample',ax=ax1,line_opts={'c':['#ff7f0e', '#1f77b4']})
     ax1.get_legend().remove()
-    if mode == 'fgsm':
-        ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'])
+    
+    if variable==59:
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'vertex category',fontsize=21)
+    
+    elif variable in definitions.interger_variables:
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'1 unit',fontsize=21)
+        
     else:
-        ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'])
+        if unit == '':
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+'units',fontsize=21)
+        else:
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+unit,fontsize=21)
+    
+    if mode == 'fgsm':
+        if len(param) == 3:
+            ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'],fontsize=15)
+        if len(param) == 2:
+            ax1.legend([f'FGSM $\epsilon$={param[1]}','Raw'],fontsize=15)
+    else:
+        if len(param) == 3:
+            ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'],fontsize=15)
+        if len(param) == 2:
+            ax1.legend([f'Noise $\sigma$={param[1]}','Raw'],fontsize=15)
         
     running_relative_entropies = []
     for si in range(1,len(param)):
@@ -276,13 +344,22 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
         else:
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#2ca02c')
-        ax2.plot([minimum,maximum],[1,1],color='black')    
         ax2.set_ylim(0,2)
-        ax2.set_xlim(minimum,maximum)
+        if variable not in integervars:
+            ax2.plot([minimum,maximum],[1,1],color='black')    
+            ax2.set_xlim(minimum,maximum)
+        elif variable in integervars:
+            if len(bins) < 20:
+                ax2.set_xticks(bins)
+            if variable == 59:
+                ax2.set_xticklabels(['RecoVertex','PseudoVertex','NoVertex'])
+            ax2.plot([minimum-0.5,maximum+0.5],[1,1],color='black')  
+            ax2.set_xlim(minimum-0.5,maximum+0.5)
+        
         if mode == 'fgsm':
-            ax2.set_ylabel('FGSM/raw')
+            ax2.set_ylabel('FGSM/raw',fontsize=21)
         else:
-            ax2.set_ylabel('Noise/raw')
+            ax2.set_ylabel('Noise/raw',fontsize=21)
             
             
     relative_entropies.append(running_relative_entropies)
@@ -293,13 +370,13 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
     range_text = ''
     log_text = ''
     n_samples_text = int(sum(denom))
-    fig.savefig(f'inputs/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
-    fig.savefig(f'inputs/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
     
     
     kl = np.array(relative_entropies)
     print(kl)
-    np.save(f'inputs/kl_div/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.npy', kl)
+    np.save(f'inputs/v2/kl_div/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.npy', kl)
     plt.show(block=False)
     time.sleep(5)
     plt.close('all')
@@ -309,16 +386,34 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
     
     # !!! logarithmic axis --> separate plot
     
-    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2.5],'hspace': .25})
+    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2],'hspace': .25})
     #ax1 = hist.plot1d(compHist,overlay='sample',ax=ax1,line_opts={'c':['#ff7f0e', '#2ca02c', '#1f77b4']})
     ax1 = hist.plot1d(compHist,overlay='sample',ax=ax1,line_opts={'c':['#ff7f0e', '#2ca02c', '#1f77b4']})
     ax1.set_yscale('log')
-    ax1.set_ylim(None, None)
+    #ax1.set_ylim(None, None)
+    ax1.set_ylim(bottom=None)
+    ax1.relim()
+    ax1.autoscale_view()
+    ax1.autoscale()
     ax1.get_legend().remove()
-    if mode == 'fgsm':
-        ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'])
+    
+    if variable==59:
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'vertex category',fontsize=21)
+    
+    elif variable in definitions.interger_variables:
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'1 unit',fontsize=21)
+        
     else:
-        ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'])
+        if unit == '':
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+'units',fontsize=21)
+        else:
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+unit,fontsize=21)
+            
+    
+    if mode == 'fgsm':
+        ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'],fontsize=15)
+    else:
+        ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'],fontsize=15)
         
     for si in range(1,len(param)):
         if mode == 'fgsm':
@@ -336,25 +431,257 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
         else:
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#2ca02c')
-        ax2.plot([minimum,maximum],[1,1],color='black')    
         ax2.set_ylim(0,2)
-        ax2.set_xlim(minimum,maximum)
+        if variable not in integervars:
+            ax2.plot([minimum,maximum],[1,1],color='black')    
+            ax2.set_xlim(minimum,maximum)
+        elif variable in integervars:
+            if len(bins) < 20:
+                ax2.set_xticks(bins)
+            if variable == 59:
+                ax2.set_xticklabels(['RecoVertex','PseudoVertex','NoVertex'])
+            ax2.plot([minimum-0.5,maximum+0.5],[1,1],color='black')  
+            ax2.set_xlim(minimum-0.5,maximum+0.5)
         if mode == 'fgsm':
-            ax2.set_ylabel('FGSM/raw')
+            ax2.set_ylabel('FGSM/raw',fontsize=21)
         else:
-            ax2.set_ylabel('Noise/raw')
+            ax2.set_ylabel('Noise/raw',fontsize=21)
             
             
     name_var = definitions.input_names[variable]
     range_text = ''
     log_text = '_logAxis'
     n_samples_text = int(sum(denom))
-    fig.savefig(f'inputs/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
-    fig.savefig(f'inputs/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
     
     del fig, ax1, ax2
     gc.collect()
 
+    # ===============================================================================================================
+    #
+    #
+    #                                        Split input shapes by flavour
+    #
+    #
+    # ---------------------------------------------------------------------------------------------------------------
+    
+    
+    
+    # old version with ratio plot --> not used
+    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2],'hspace': .25})
+    fig, ax1 = plt.subplots(1,1,figsize=[10,6])
+    hist.plot1d(newHist['raw'].sum('sample'),overlay='flavour',ax=ax1,line_opts={'linestyle':'-','alpha':0.42})
+    #if mode == 'fgsm':
+    #    ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'],fontsize=15)
+    #else:
+    #    ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'],fontsize=15)
+        
+        
+    for si in range(2,len(param)):
+        ax1.set_prop_cycle(None)
+        if mode == 'fgsm':
+            hist.plot1d(newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample'),overlay='flavour',ax=ax1,clear=False,line_opts={'linestyle':'-'})
+            num = compHist[f"fgsm $\epsilon$={param[si]}"].sum('sample').values()[()]
+            #print(newHist[[f"fgsm $\epsilon$={param[si]}",'b-jets']].sum('sample','flavour').values()[()])
+            #print(newHist[[f"fgsm $\epsilon$={param[si]}"]].sum('sample')['b-jets'].sum('flavour').values()[()])
+            numB  = newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample')['b-jets'].sum('flavour').values()[()]
+            numBB = newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample')['bb-jets'].sum('flavour').values()[()]
+            numC  = newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample')['c-jets'].sum('flavour').values()[()]
+            numL  = newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample')['udsg-jets'].sum('flavour').values()[()]
+        else:
+            hist.plot1d(newHist[f"noise $\sigma$={param[si]}"].sum('sample'),overlay='flavour',ax=ax1,clear=False,line_opts={'linestyle':'-'})
+            num = compHist[f"noise $\sigma$={param[si]}"].sum('sample').values()[()]
+            numB  = newHist[f"noise $\sigma$={param[si]}"].sum('sample')['b-jets'].sum('flavour').values()[()]
+            numBB = newHist[f"noise $\sigma$={param[si]}"].sum('sample')['bb-jets'].sum('flavour').values()[()]
+            numC  = newHist[f"noise $\sigma$={param[si]}"].sum('sample')['c-jets'].sum('flavour').values()[()]
+            numL  = newHist[f"noise $\sigma$={param[si]}"].sum('sample')['udsg-jets'].sum('flavour').values()[()]
+            
+        denom = compHist['raw'].sum('sample').values()[()]
+        denomB  = newHist['raw'].sum('sample')['b-jets'].sum('flavour').values()[()]
+        denomBB = newHist['raw'].sum('sample')['bb-jets'].sum('flavour').values()[()]
+        denomC  = newHist['raw'].sum('sample')['c-jets'].sum('flavour').values()[()]
+        denomL  = newHist['raw'].sum('sample')['udsg-jets'].sum('flavour').values()[()]
+        ratio = num / denom
+        ratioB  = numB / denomB
+        ratioBB = numBB / denomBB
+        ratioC  = numC / denomC
+        ratioL  = numL / denomL
+        num_err = np.sqrt(num)
+        num_errB  = np.sqrt(numB )
+        num_errBB = np.sqrt(numBB)
+        num_errC  = np.sqrt(numC )
+        num_errL  = np.sqrt(numL )
+        denom_err = np.sqrt(denom)
+        denom_errB  = np.sqrt(denomB )
+        denom_errBB = np.sqrt(denomBB)
+        denom_errC  = np.sqrt(denomC )
+        denom_errL  = np.sqrt(denomL )
+        ratio_err = np.sqrt((num_err/denom)**2+(num/(denom**2)*denom_err)**2)
+        ratio_errB  = np.sqrt((num_errB/denomB)**2+(numB/(denomB**2)*denom_errB)**2)
+        ratio_errBB = np.sqrt((num_errBB/denomBB)**2+(numBB/(denomBB**2)*denom_errBB)**2)
+        ratio_errC  = np.sqrt((num_errC/denomC)**2+(numC/(denomC**2)*denom_errC)**2)
+        ratio_errL  = np.sqrt((num_errL/denomL)**2+(numL/(denomL**2)*denom_errL)**2)
+        
+        # old version with ratio plot --> not used
+        #for flav in ['B','BB','C','L']:
+        #    exec(f"ax2.errorbar(bins,ratio{flav},yerr=ratio_err{flav},fmt='.')")
+        
+        #if si == 1:
+        #    ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
+        #else:
+        #    ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#2ca02c')
+        
+        # old version with ratio plot --> not used
+        #ax2.set_ylim(0,2)
+        #if variable not in integervars:
+        #    ax2.plot([minimum,maximum],[1,1],color='black')    
+        #    ax2.set_xlim(minimum,maximum)
+        #elif variable in integervars:
+        #    if len(bins) < 20:
+        #        ax2.set_xticks(bins)
+        #    ax2.plot([minimum-0.5,maximum+0.5],[1,1],color='black')  
+        #    ax2.set_xlim(minimum-0.5,maximum+0.5)
+        #if mode == 'fgsm':
+        #    ax2.set_ylabel('FGSM/raw',fontsize=21)
+        #else:
+        #    ax2.set_ylabel('Noise/raw',fontsize=21)
+            
+            
+    
+    if variable==59:
+        ax1.set_xticks(bins)
+        ax1.set_xticklabels(['RecoVertex','PseudoVertex','NoVertex'])
+        ax1.set_xlim(minimum-0.5,maximum+0.5)
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'vertex category',fontsize=21)
+    
+    elif variable in definitions.interger_variables:
+        if len(bins) < 20:
+            ax1.set_xticks(bins)
+        ax1.set_xlim(minimum-0.5,maximum+0.5)
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'1 unit',fontsize=21)
+        
+    else:
+        if unit == '':
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+'units',fontsize=21)
+        else:
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+unit,fontsize=21)
+            
+    
+    ax1.get_legend().remove()      
+    if mode == 'fgsm':
+        ax1.legend(['b (raw)','bb (raw)','c (raw)','udsg (raw)',f'b ($\epsilon$ = {param[si]})',f'bb ($\epsilon$ = {param[si]})',f'c ($\epsilon$ = {param[si]})',f'udsg ($\epsilon$ = {param[si]})'],fontsize=12,ncol=4,bbox_to_anchor=(0, 1.02,1,0.2),loc='lower left')
+    else:
+        ax1.legend(['b (raw)','bb (raw)','c (raw)','udsg (raw)',f'b ($\sigma$ = {param[si]})',f'bb ($\sigma$ = {param[si]})',f'c ($\sigma$ = {param[si]})',f'udsg ($\sigma$ = {param[si]})'],fontsize=12,ncol=4,bbox_to_anchor=(0, 1.02,1,0.2),loc='lower left')
+    name_var = definitions.input_names[variable]
+    range_text = ''
+    log_text = ''
+    n_samples_text = int(sum(denom))
+    fig.savefig(f'inputs/v2/split_by_flav/input_{variable}_{name_var}_splitbyflav_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/split_by_flav/input_{variable}_{name_var}_splitbyflav_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
+    
+    
+    
+    # old version with ratio plot --> not used
+    #del fig, ax1, ax2
+    del fig, ax1
+    gc.collect(2)
+    
+    
+    # !!! logarithmic axis --> separate plot
+    
+    # old version with ratio plot --> not used
+    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2],'hspace': .25})
+    fig, ax1 = plt.subplots(1,1,figsize=[10,6])
+    hist.plot1d(newHist['raw'].sum('sample'),overlay='flavour',ax=ax1,line_opts={'linestyle':'-','alpha':0.42})
+    #if mode == 'fgsm':
+    #    ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'],fontsize=15)
+    #else:
+    #    ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'],fontsize=15)
+        
+    for si in range(2,len(param)):
+        ax1.set_prop_cycle(None)
+        if mode == 'fgsm':
+            hist.plot1d(newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample'),overlay='flavour',ax=ax1,clear=False,line_opts={'linestyle':'-'})
+            #num = compHist[f"fgsm $\epsilon$={param[si]}"].sum('sample').values()[()]
+        else:
+            hist.plot1d(newHist[f"noise $\sigma$={param[si]}"].sum('sample'),overlay='flavour',ax=ax1,clear=False,line_opts={'linestyle':'-'})
+            #num = compHist[f"noise $\sigma$={param[si]}"].sum('sample').values()[()]
+            
+        #denom = compHist['raw'].sum('sample').values()[()]
+        #ratio = num / denom
+        #num_err = np.sqrt(num)
+        #denom_err = np.sqrt(denom)
+        #ratio_err = np.sqrt((num_err/denom)**2+(num/(denom**2)*denom_err)**2)
+        
+        # old version with ratio plot --> not used
+        #for flav in ['B','BB','C','L']:
+        #    exec(f"ax2.errorbar(bins,ratio{flav},yerr=ratio_err{flav},fmt='.')")
+            
+        #if si == 1:
+        #    ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
+        #else:
+        #    ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#2ca02c')
+        
+        # old version with ratio plot --> not used
+        #ax2.set_ylim(0,2)
+        #if variable not in integervars:
+        #    ax2.plot([minimum,maximum],[1,1],color='black')    
+        #    ax2.set_xlim(minimum,maximum)
+        #elif variable in integervars:
+        #    if len(bins) < 20:
+        #        ax2.set_xticks(bins)
+        #    ax2.plot([minimum-0.5,maximum+0.5],[1,1],color='black')  
+        #    ax2.set_xlim(minimum-0.5,maximum+0.5)
+        #if mode == 'fgsm':
+        #    ax2.set_ylabel('FGSM/raw',fontsize=21)
+        #else:
+        #    ax2.set_ylabel('Noise/raw',fontsize=21)
+    
+    ax1.set_yscale('log')
+    #ax1.set_ylim(None, None)
+    ax1.set_ylim(bottom=None)
+    ax1.relim()
+    ax1.autoscale_view()
+    ax1.autoscale()        
+    
+    if variable==59:
+        ax1.set_xticks(bins)
+        ax1.set_xticklabels(['RecoVertex','PseudoVertex','NoVertex'])
+        ax1.set_xlim(minimum-0.5,maximum+0.5)
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'vertex category',fontsize=21)
+    
+    elif variable in definitions.interger_variables:
+        if len(bins) < 20:
+            ax1.set_xticks(bins)
+        ax1.set_xlim(minimum-0.5,maximum+0.5)
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'1 unit',fontsize=21)
+        
+    else:
+        if unit == '':
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+'units',fontsize=21)
+        else:
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+unit,fontsize=21)
+    
+    ax1.get_legend().remove()      
+    if mode == 'fgsm':
+        ax1.legend(['b (raw)','bb (raw)','c (raw)','udsg (raw)',f'b ($\epsilon$ = {param[si]})',f'bb ($\epsilon$ = {param[si]})',f'c ($\epsilon$ = {param[si]})',f'udsg ($\epsilon$ = {param[si]})'],fontsize=12,ncol=4,bbox_to_anchor=(0, 1.02,1,0.2),loc='lower left')
+    else:
+        ax1.legend(['b (raw)','bb (raw)','c (raw)','udsg (raw)',f'b ($\sigma$ = {param[si]})',f'bb ($\sigma$ = {param[si]})',f'c ($\sigma$ = {param[si]})',f'udsg ($\sigma$ = {param[si]})'],fontsize=12,ncol=4,bbox_to_anchor=(0, 1.02,1,0.2),loc='lower left')
+    
+    name_var = definitions.input_names[variable]
+    range_text = ''
+    log_text = '_logAxis'
+    n_samples_text = int(sum(denom))
+    fig.savefig(f'inputs/v2/split_by_flav/input_{variable}_{name_var}_splitbyflav_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/split_by_flav/input_{variable}_{name_var}_splitbyflav_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
+    
+    # old version with ratio plot --> not used
+    #del fig, ax1, ax2
+    del fig, ax1
+    gc.collect()
+    
+    
     
     # =================================================================================================================
     # 
@@ -366,31 +693,85 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
     
     
     if minim is None:
-        minimum = min([min(xmagn[i]) for i in range(len(param))])
+        minimum = min([min(xmagn[i]) for i in range(len(param))])-0.01
+    else:
+        minimum = minim
     if maxim is None:
-        maximum = max([max(xmagn[i]) for i in range(len(param))])
+        maximum = max([max(xmagn[i]) for i in range(len(param))])+0.01
+    else:
+        maximum = maxim
     
-    bins = np.linspace(minimum+(maximum-minimum)/100/2,maximum-(maximum-minimum)/100/2,100)
+    print(minimum, maximum)
+          
     
+    if variable not in integervars:
+        # bins are actually bin centers (to plot the errorbars in the ratio plot)
+        bins = np.linspace(minimum+(maximum-minimum)/100/2,maximum-(maximum-minimum)/100/2,100)
+
+        compHist = hist.Hist("Jets",
+                              hist.Cat("sample","sample name"),
+                              hist.Bin("prop",definitions.display_names[variable]+xunit,100,minimum,maximum))
+        newHist = hist.Hist("Jets",
+                              hist.Cat("sample","sample name"),
+                              hist.Cat("flavour","flavour of the jet"),
+                              hist.Bin("prop",definitions.display_names[variable]+xunit,100,minimum,maximum))
     
-    compHist = hist.Hist("Jets",
+    elif variable in integervars:
+        #bins = np.arange(0,maximum+1)
+        bin_edges = np.arange(int(minimum),int(maximum)+2)-0.5
+        #bins = np.linspace(minimum+(maximum-minimum)/100/2,maximum-(maximum-minimum)/100/2,100)
+        bins = (bin_edges[0:-1]+bin_edges[1:])/2
+        compHist = hist.Hist("Jets",
                           hist.Cat("sample","sample name"),
-                          hist.Bin("prop",definitions.display_names[variable],100,minimum,maximum))
+                          hist.Bin("prop",definitions.display_names[variable]+xunit,bin_edges))
+        newHist = hist.Hist("Jets",
+                          hist.Cat("sample","sample name"),
+                          hist.Cat("flavour","flavour of the jet"),
+                          hist.Bin("prop",definitions.display_names[variable]+xunit,bin_edges))
+    
+    bin_size_original = bins[2] - bins[1]
+    bin_size_reduced = round(bin_size_original,definitions.format_unit_digits[variable])
+    
     compHist.fill(sample="raw",prop=xmagn[0])
+    newHist.fill(sample="raw",flavour='b-jets',prop=xmagn[0][test_targets == 0])
+    newHist.fill(sample="raw",flavour='bb-jets',prop=xmagn[0][test_targets == 1])
+    newHist.fill(sample="raw",flavour='c-jets',prop=xmagn[0][test_targets == 2])
+    newHist.fill(sample="raw",flavour='udsg-jets',prop=xmagn[0][test_targets == 3])
     
     for si in range(1,len(param)):
         if mode == 'fgsm':
             compHist.fill(sample=f"fgsm $\epsilon$={param[si]}",prop=xmagn[si])
+            newHist.fill(sample=f"fgsm $\epsilon$={param[si]}",flavour='b-jets',prop=xmagn[si][test_targets == 0])
+            newHist.fill(sample=f"fgsm $\epsilon$={param[si]}",flavour='bb-jets',prop=xmagn[si][test_targets == 1])
+            newHist.fill(sample=f"fgsm $\epsilon$={param[si]}",flavour='c-jets',prop=xmagn[si][test_targets == 2])
+            newHist.fill(sample=f"fgsm $\epsilon$={param[si]}",flavour='udsg-jets',prop=xmagn[si][test_targets == 3])
         else:
             compHist.fill(sample=f"noise $\sigma$={param[si]}",prop=xmagn[si])
+            newHist.fill(sample=f"noise $\sigma$={param[si]}",flavour='b-jets',prop=xmagn[si][test_targets == 0])
+            newHist.fill(sample=f"noise $\sigma$={param[si]}",flavour='bb-jets',prop=xmagn[si][test_targets == 1])
+            newHist.fill(sample=f"noise $\sigma$={param[si]}",flavour='c-jets',prop=xmagn[si][test_targets == 2])
+            newHist.fill(sample=f"noise $\sigma$={param[si]}",flavour='udsg-jets',prop=xmagn[si][test_targets == 3])
             
-    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2.5],'hspace': .25})
+    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2],'hspace': .25})
     hist.plot1d(compHist,overlay='sample',ax=ax1,line_opts={'c':['#ff7f0e', '#2ca02c', '#1f77b4']})
+    
+    if variable==59:
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'vertex category',fontsize=21)
+    
+    elif variable in definitions.interger_variables:
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'1 unit',fontsize=21)
+        
+    else:
+        if unit == '':
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+'units',fontsize=21)
+        else:
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+unit,fontsize=21)
+    
     ax1.get_legend().remove()
     if mode == 'fgsm':
-        ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'])
+        ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'],fontsize=15)
     else:
-        ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'])
+        ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'],fontsize=15)
         
     running_relative_entropies = []
     for si in range(1,len(param)):
@@ -420,13 +801,21 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
         else:
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#2ca02c')
-        ax2.plot([minimum,maximum],[1,1],color='black')    
         ax2.set_ylim(0,2)
-        ax2.set_xlim(minimum,maximum)
+        if variable not in integervars:
+            ax2.plot([minimum,maximum],[1,1],color='black')    
+            ax2.set_xlim(minimum,maximum)
+        elif variable in integervars:
+            if len(bins) < 20:
+                ax2.set_xticks(bins)
+            if variable == 59:
+                ax2.set_xticklabels(['RecoVertex','PseudoVertex','NoVertex'])
+            ax2.plot([minimum-0.5,maximum+0.5],[1,1],color='black')  
+            ax2.set_xlim(minimum-0.5,maximum+0.5)
         if mode == 'fgsm':
-            ax2.set_ylabel('FGSM/raw')
+            ax2.set_ylabel('FGSM/raw',fontsize=21)
         else:
-            ax2.set_ylabel('Noise/raw')
+            ax2.set_ylabel('Noise/raw',fontsize=21)
             
             
     relative_entropies.append(running_relative_entropies)
@@ -437,13 +826,13 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
     range_text = '_specRange'
     log_text = ''
     n_samples_text = int(sum(denom))
-    fig.savefig(f'inputs/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
-    fig.savefig(f'inputs/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
     
     
     kl = np.array(relative_entropies)
     print(kl)
-    np.save(f'inputs/kl_div/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.npy', kl)
+    np.save(f'inputs/v2/kl_div/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.npy', kl)
     
         #pass
     del fig, ax1, ax2
@@ -452,15 +841,32 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
     
     # !!! logarithmic axis --> separate plot
     
-    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2.5],'hspace': .25})
+    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2],'hspace': .25})
     ax1 = hist.plot1d(compHist,overlay='sample',ax=ax1,line_opts={'c':['#ff7f0e', '#2ca02c', '#1f77b4']})
     ax1.set_yscale('log')
-    ax1.set_ylim(None, None)
+    #ax1.set_ylim(None, None)
+    ax1.set_ylim(bottom=None)
+    ax1.relim()
+    ax1.autoscale_view()
+    ax1.autoscale()
+    
+    if variable==59:
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'vertex category',fontsize=21)
+    
+    elif variable in definitions.interger_variables:
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'1 unit',fontsize=21)
+        
+    else:
+        if unit == '':
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+'units',fontsize=21)
+        else:
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+unit,fontsize=21)
+    
     ax1.get_legend().remove()
     if mode == 'fgsm':
-        ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'])
+        ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'],fontsize=15)
     else:
-        ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'])
+        ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'],fontsize=15)
         
     for si in range(1,len(param)):
         if mode == 'fgsm':
@@ -478,32 +884,264 @@ def plot(variable=0,mode=attack,param=0.1,minim=None,maxim=None,reduced=True):
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
         else:
             ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#2ca02c')
-        ax2.plot([minimum,maximum],[1,1],color='black')    
         ax2.set_ylim(0,2)
-        ax2.set_xlim(minimum,maximum)
+        if variable not in integervars:
+            ax2.plot([minimum,maximum],[1,1],color='black')    
+            ax2.set_xlim(minimum,maximum)
+        elif variable in integervars:
+            if len(bins) < 20:
+                ax2.set_xticks(bins)
+            if variable == 59:
+                ax2.set_xticklabels(['RecoVertex','PseudoVertex','NoVertex'])
+            ax2.plot([minimum-0.5,maximum+0.5],[1,1],color='black')  
+            ax2.set_xlim(minimum-0.5,maximum+0.5)
         if mode == 'fgsm':
-            ax2.set_ylabel('FGSM/raw')
+            ax2.set_ylabel('FGSM/raw',fontsize=21)
         else:
-            ax2.set_ylabel('Noise/raw')
+            ax2.set_ylabel('Noise/raw',fontsize=21)
             
             
     name_var = definitions.input_names[variable]
     range_text = '_specRange'
     log_text = '_logAxis'
     n_samples_text = int(sum(denom))
-    fig.savefig(f'inputs/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
-    fig.savefig(f'inputs/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/input_{variable}_{name_var}_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
     
     del fig, ax1, ax2
+    gc.collect()
+    
+    # ===============================================================================================================
+    #
+    #
+    #                                        Split input shapes by flavour
+    #
+    #
+    # ---------------------------------------------------------------------------------------------------------------
+    
+    
+    
+    # old version with ratio plot --> not used
+    #fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2],'hspace': .25})
+    fig, ax1 = plt.subplots(1,1,figsize=[10,6])
+    hist.plot1d(newHist['raw'].sum('sample'),overlay='flavour',ax=ax1,line_opts={'linestyle':'-','alpha':0.42})
+    #if mode == 'fgsm':
+    #    ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'],fontsize=15)
+    #else:
+    #    ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'],fontsize=15)
+        
+        
+    for si in range(2,len(param)):
+        ax1.set_prop_cycle(None)
+        if mode == 'fgsm':
+            hist.plot1d(newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample'),overlay='flavour',ax=ax1,clear=False,line_opts={'linestyle':'-'})
+            num = compHist[f"fgsm $\epsilon$={param[si]}"].sum('sample').values()[()]
+            # the following two lines: just for testing of hist functionality
+            #print(newHist[[f"fgsm $\epsilon$={param[si]}",'b-jets']].sum('sample','flavour').values()[()])
+            #print(newHist[[f"fgsm $\epsilon$={param[si]}"]].sum('sample')['b-jets'].sum('flavour').values()[()])
+            numB  = newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample')['b-jets'].sum('flavour').values()[()]
+            numBB = newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample')['bb-jets'].sum('flavour').values()[()]
+            numC  = newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample')['c-jets'].sum('flavour').values()[()]
+            numL  = newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample')['udsg-jets'].sum('flavour').values()[()]
+        else:
+            hist.plot1d(newHist[f"noise $\sigma$={param[si]}"].sum('sample'),overlay='flavour',ax=ax1,clear=False,line_opts={'linestyle':'-'})
+            num = compHist[f"noise $\sigma$={param[si]}"].sum('sample').values()[()]
+            numB  = newHist[f"noise $\sigma$={param[si]}"].sum('sample')['b-jets'].sum('flavour').values()[()]
+            numBB = newHist[f"noise $\sigma$={param[si]}"].sum('sample')['bb-jets'].sum('flavour').values()[()]
+            numC  = newHist[f"noise $\sigma$={param[si]}"].sum('sample')['c-jets'].sum('flavour').values()[()]
+            numL  = newHist[f"noise $\sigma$={param[si]}"].sum('sample')['udsg-jets'].sum('flavour').values()[()]
+            
+        denom = compHist['raw'].sum('sample').values()[()]
+        denomB  = newHist['raw'].sum('sample')['b-jets'].sum('flavour').values()[()]
+        denomBB = newHist['raw'].sum('sample')['bb-jets'].sum('flavour').values()[()]
+        denomC  = newHist['raw'].sum('sample')['c-jets'].sum('flavour').values()[()]
+        denomL  = newHist['raw'].sum('sample')['udsg-jets'].sum('flavour').values()[()]
+        ratio = num / denom
+        ratioB  = numB / denomB
+        ratioBB = numBB / denomBB
+        ratioC  = numC / denomC
+        ratioL  = numL / denomL
+        num_err = np.sqrt(num)
+        num_errB  = np.sqrt(numB )
+        num_errBB = np.sqrt(numBB)
+        num_errC  = np.sqrt(numC )
+        num_errL  = np.sqrt(numL )
+        denom_err = np.sqrt(denom)
+        denom_errB  = np.sqrt(denomB )
+        denom_errBB = np.sqrt(denomBB)
+        denom_errC  = np.sqrt(denomC )
+        denom_errL  = np.sqrt(denomL )
+        ratio_err = np.sqrt((num_err/denom)**2+(num/(denom**2)*denom_err)**2)
+        ratio_errB  = np.sqrt((num_errB/denomB)**2+(numB/(denomB**2)*denom_errB)**2)
+        ratio_errBB = np.sqrt((num_errBB/denomBB)**2+(numBB/(denomBB**2)*denom_errBB)**2)
+        ratio_errC  = np.sqrt((num_errC/denomC)**2+(numC/(denomC**2)*denom_errC)**2)
+        ratio_errL  = np.sqrt((num_errL/denomL)**2+(numL/(denomL**2)*denom_errL)**2)
+        
+        # old version with ratio plot --> not used
+        #for flav in ['B','BB','C','L']:
+        #    exec(f"ax2.errorbar(bins,ratio{flav},yerr=ratio_err{flav},fmt='.')")
+        
+        # outdated way to create errorbars
+        #if si == 1:
+        #    ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
+        #else:
+        #    ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#2ca02c')
+        
+        # old version with ratio plot --> not used
+        #ax2.set_ylim(0,2)
+        #if variable not in integervars:
+        #    ax2.plot([minimum,maximum],[1,1],color='black')    
+        #    ax2.set_xlim(minimum,maximum)
+        #elif variable in integervars:
+        #    if len(bins) < 20:
+        #        ax2.set_xticks(bins)
+        #    ax2.plot([minimum-0.5,maximum+0.5],[1,1],color='black')  
+        #    ax2.set_xlim(minimum-0.5,maximum+0.5)
+        #if mode == 'fgsm':
+        #    ax2.set_ylabel('FGSM/raw',fontsize=21)
+        #else:
+        #    ax2.set_ylabel('Noise/raw',fontsize=21)
+            
+    
+    if variable==59:
+        ax1.set_xticks(bins)
+        ax1.set_xticklabels(['RecoVertex','PseudoVertex','NoVertex'])
+        ax1.set_xlim(minimum-0.5,maximum+0.5)
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'vertex category',fontsize=21)
+    
+    elif variable in definitions.interger_variables:
+        if len(bins) < 20:
+            ax1.set_xticks(bins)
+        ax1.set_xlim(minimum-0.5,maximum+0.5)
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'1 unit',fontsize=21)
+        
+    else:
+        if unit == '':
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+'units',fontsize=21)
+        else:
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+unit,fontsize=21)
+    
+    ax1.get_legend().remove()      
+    if mode == 'fgsm':
+        ax1.legend(['b (raw)','bb (raw)','c (raw)','udsg (raw)',f'b ($\epsilon$ = {param[si]})',f'bb ($\epsilon$ = {param[si]})',f'c ($\epsilon$ = {param[si]})',f'udsg ($\epsilon$ = {param[si]})'],fontsize=12,ncol=4,bbox_to_anchor=(0, 1.02,1,0.2),loc='lower left')
+    else:
+        ax1.legend(['b (raw)','bb (raw)','c (raw)','udsg (raw)',f'b ($\sigma$ = {param[si]})',f'bb ($\sigma$ = {param[si]})',f'c ($\sigma$ = {param[si]})',f'udsg ($\sigma$ = {param[si]})'],fontsize=12,ncol=4,bbox_to_anchor=(0, 1.02,1,0.2),loc='lower left')
+    name_var = definitions.input_names[variable]
+    range_text = '_specRange'
+    log_text = ''
+    n_samples_text = int(sum(denom))
+    fig.savefig(f'inputs/v2/split_by_flav/input_{variable}_{name_var}_splitbyflav_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/split_by_flav/input_{variable}_{name_var}_splitbyflav_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
+    
+    
+    
+    # old version with ratio plot --> not used
+    #del fig, ax1, ax2
+    del fig, ax1
+    gc.collect(2)
+    
+    
+    # !!! logarithmic axis --> separate plot
+    
+    # old version with ratio plot --> not used
+    fig, (ax1,ax2) = plt.subplots(2,1,sharex=True,figsize=[10,6],gridspec_kw={'height_ratios': [3, 2],'hspace': .25})
+    fig, ax1 = plt.subplots(1,1,figsize=[10,6])
+    hist.plot1d(newHist['raw'].sum('sample'),overlay='flavour',ax=ax1,line_opts={'linestyle':'-','alpha':0.42})
+    #if mode == 'fgsm':
+    #    ax1.legend([f'FGSM $\epsilon$={param[1]}',f'FGSM $\epsilon$={param[2]}','Raw'],fontsize=15)
+    #else:
+    #    ax1.legend([f'Noise $\sigma$={param[1]}',f'Noise $\sigma$={param[2]}','Raw'],fontsize=15)
+        
+    for si in range(2,len(param)):
+        ax1.set_prop_cycle(None)
+        if mode == 'fgsm':
+            hist.plot1d(newHist[f"fgsm $\epsilon$={param[si]}"].sum('sample'),overlay='flavour',ax=ax1,clear=False,line_opts={'linestyle':'-'})
+            #num = compHist[f"fgsm $\epsilon$={param[si]}"].sum('sample').values()[()]
+        else:
+            hist.plot1d(newHist[f"noise $\sigma$={param[si]}"].sum('sample'),overlay='flavour',ax=ax1,clear=False,line_opts={'linestyle':'-'})
+            #num = compHist[f"noise $\sigma$={param[si]}"].sum('sample').values()[()]
+            
+        #denom = compHist['raw'].sum('sample').values()[()]
+        #ratio = num / denom
+        #num_err = np.sqrt(num)
+        #denom_err = np.sqrt(denom)
+        #ratio_err = np.sqrt((num_err/denom)**2+(num/(denom**2)*denom_err)**2)
+        
+        # old version with ratio plot --> not used
+        #for flav in ['B','BB','C','L']:
+        #    exec(f"ax2.errorbar(bins,ratio{flav},yerr=ratio_err{flav},fmt='.')")
+            
+        #if si == 1:
+        #    ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#ff7f0e')
+        #else:
+        #    ax2.errorbar(bins,ratio,yerr=ratio_err,fmt='.',color='#2ca02c')
+        
+        # old version with ratio plot --> not used
+        #ax2.set_ylim(0,2)
+        #if variable not in integervars:
+        #    ax2.plot([minimum,maximum],[1,1],color='black')    
+        #    ax2.set_xlim(minimum,maximum)
+        #elif variable in integervars:
+        #    if len(bins) < 20:
+        #        ax2.set_xticks(bins)
+        #    ax2.plot([minimum-0.5,maximum+0.5],[1,1],color='black')  
+        #    ax2.set_xlim(minimum-0.5,maximum+0.5)
+        #if mode == 'fgsm':
+        #    ax2.set_ylabel('FGSM/raw',fontsize=21)
+        #else:
+        #    ax2.set_ylabel('Noise/raw',fontsize=21)
+    
+    ax1.set_yscale('log')
+    #ax1.set_ylim(None, None)
+    ax1.set_ylim(bottom=None)
+    ax1.relim()
+    ax1.autoscale_view()
+    ax1.autoscale()    
+    
+    if variable==59:
+        ax1.set_xticks(bins)
+        ax1.set_xticklabels(['RecoVertex','PseudoVertex','NoVertex'])
+        ax1.set_xlim(minimum-0.5,maximum+0.5)
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'vertex category',fontsize=21)
+    
+    elif variable in definitions.interger_variables:
+        if len(bins) < 20:
+            ax1.set_xticks(bins)
+        ax1.set_xlim(minimum-0.5,maximum+0.5)
+        ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+'1 unit',fontsize=21)
+        
+    else:
+        if unit == '':
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+'units',fontsize=21)
+        else:
+            ax1.set_ylabel(definitions.ylabel_text[variable]+' / '+str(bin_size_reduced)+' '+unit,fontsize=21)
+    
+    ax1.get_legend().remove()    
+    if mode == 'fgsm':
+        ax1.legend(['b (raw)','bb (raw)','c (raw)','udsg (raw)',f'b ($\epsilon$ = {param[si]})',f'bb ($\epsilon$ = {param[si]})',f'c ($\epsilon$ = {param[si]})',f'udsg ($\epsilon$ = {param[si]})'],fontsize=12,ncol=4,mode='expand',bbox_to_anchor=(0, 1.02,1,0.2),loc='lower left')
+    else:
+        ax1.legend(['b (raw)','bb (raw)','c (raw)','udsg (raw)',f'b ($\sigma$ = {param[si]})',f'bb ($\sigma$ = {param[si]})',f'c ($\sigma$ = {param[si]})',f'udsg ($\sigma$ = {param[si]})'],fontsize=12,ncol=4,bbox_to_anchor=(0, 1.02,1,0.2),loc='lower left')
+    
+    name_var = definitions.input_names[variable]
+    range_text = '_specRange'
+    log_text = '_logAxis'
+    n_samples_text = int(sum(denom))
+    fig.savefig(f'inputs/v2/split_by_flav/input_{variable}_{name_var}_splitbyflav_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.svg', bbox_inches='tight')
+    fig.savefig(f'inputs/v2/split_by_flav/input_{variable}_{name_var}_splitbyflav_{attack}{param}{range_text}{log_text}_{n_samples_text}_{weighting_method}_{at_epoch}.pdf', bbox_inches='tight')
+    
+    # old version with ratio plot --> not used
+    #del fig, ax1, ax2
+    del fig, ax1
     gc.collect()
     
     
     
     
-if fixRange == 'yes':
-    min_max = definitions.manual_ranges[variable]
-else:
-    min_max = [None,None]
+#if fixRange == 'yes':
+#    min_max = definitions.manual_ranges[variable]
+#else:
+#    min_max = [None,None]
     
+min_max = definitions.manual_ranges[variable]
+#print(min_max)
 plot(variable,mode=attack,param=[0]+param,minim=min_max[0],maxim=min_max[1],reduced=True)
-

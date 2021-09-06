@@ -31,5 +31,4 @@ module load cuda/11.0
 module load cudnn
 source ~/miniconda3/bin/activate
 conda activate my-env
-python eval_roc_new.py ${VARI} ${ATTACK} ${FIXRANGE} ${PARA} ${FILES} ${WM} ${DEFAULT} ${JETS} ${DOMINIMAL_EVAL}
-
+python eval_inputs.py ${VARI} ${ATTACK} ${FIXRANGE} ${PARA1},${PARA2} ${FILES} ${PREVEP} ${WM} ${DEFAULT} ${JETS} ${DOMINIMAL_EVAL}

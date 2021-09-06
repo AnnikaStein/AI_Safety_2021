@@ -85,4 +85,3 @@ for index in range(len(ends)):
         if exit_status==1:  # Check to make sure the job submitted
             print("Job {0} failed to submit".format(submit_command))
         print("Done submitting jobs!")
-

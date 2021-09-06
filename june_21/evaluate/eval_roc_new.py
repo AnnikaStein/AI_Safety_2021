@@ -47,6 +47,8 @@ parser.add_argument("dominimal_eval", help="Only minimal number of files for eva
 parser.add_argument("add_axis", help="Add a second axis as inset to the plot")
 parser.add_argument("FGSM_setup", type=int, help="If FGSM, create adversarial inputs from individual models (-1) or only for a given setup (specify this setup, e.g. type 2 for the 0,1,2 --> second index of all requested methods (counted from 0).)")
 parser.add_argument("log_axis", help="Flip axis and use log scale (yes/no)")
+parser.add_argument("force_compare", help="Force compare (yes/no)")
+parser.add_argument("line_thickness", help="Line thickness")
 parser.add_argument("save_mode", help="Save AUC only, or save plots of ROC curves (ROC/AUC), only useful for multiple specified setups (compare).")
 args = parser.parse_args()
 
@@ -76,6 +78,14 @@ add_axis = True if args.add_axis == 'yes' else False
 FGSM_setup = args.FGSM_setup
 log_axis = True if args.log_axis == 'yes' else False
 save_mode = args.save_mode
+
+
+# quick trick to run the better version also with one requested model only
+# (if one does not care about the thresholds, but wants nice style and everything)
+# goal for future is to get thresholds also for the original compare == True case with multiple epchs/parameters/setups etc.
+force_compare = True if args.force_compare == 'yes' else False
+
+line_thickness = args.line_thickness
 
 if save_mode=='AUC':
     epochs = range(epochs[0],epochs[1]+1)
@@ -210,7 +220,9 @@ model.to(device)
 model.eval()
     
 
-if compare == False:
+    
+
+if compare == False and force_compare == False:
     with torch.no_grad():
         DeepCSV_testset = np.concatenate([torch.load(ti) for ti in DeepCSV_testset_file_paths])
         print('DeepCSV test done')
@@ -248,8 +260,8 @@ if compare == False:
         #plt.title(f'ROC b tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_b_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_b_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_b_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_b_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -270,8 +282,8 @@ if compare == False:
         #plt.title(f'ROC bb tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_bb_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_bb_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_bb_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_bb_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -292,8 +304,8 @@ if compare == False:
         #plt.title(f'ROC c tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_c_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_c_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_c_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_c_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -318,8 +330,8 @@ if compare == False:
         #plt.title(f'ROC udsg tagging after {at_epoch} epochs,\nevaluated on {len_test} jets ({NUM_DATASETS} files, default {default})')
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_udsg_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_udsg_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_udsg_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_udsg_tagging_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -378,8 +390,8 @@ if compare == False:
         plt.legend([f'Classifier: {wm_text}\nepoch {at_epoch}, '+'AUC = {:.4f}'.format(customauc), f'DeepCSV'+', AUC = {:.4f}'.format(deepcsvauc)],title='ROC B vs L',loc='upper left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')  
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)  
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')  
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -420,8 +432,8 @@ if compare == False:
         plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='B vs L',loc='center',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')  
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)  
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')  
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -476,8 +488,8 @@ if compare == False:
         plt.legend([f'Classifier: {wm_text}\nepoch {at_epoch}, '+'AUC = {:.4f}'.format(customauc), f'DeepCSV'+', AUC = {:.4f}'.format(deepcsvauc)],title='ROC B vs C',loc='upper left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)    
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')           
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)    
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')           
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -505,8 +517,8 @@ if compare == False:
         plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='B vs C',loc='lower left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')  
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)  
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_BvC_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')  
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -536,8 +548,8 @@ if compare == False:
         plt.legend([f'Classifier: {wm_text}\nepoch {at_epoch}, '+'AUC = {:.4f}'.format(customauc), f'DeepCSV'+', AUC = {:.4f}'.format(deepcsvauc)],title='ROC C vs B',loc='upper left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400) 
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight') 
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400) 
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight') 
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -564,8 +576,8 @@ if compare == False:
         plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='C vs B',loc='lower left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')  
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)  
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvB_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')  
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -613,8 +625,8 @@ if compare == False:
         plt.legend([f'Classifier: {wm_text}\nepoch {at_epoch}, '+'AUC = {:.4f}'.format(customauc), f'DeepCSV'+', AUC = {:.4f}'.format(deepcsvauc)],title='ROC C vs L',loc='upper left',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')  
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)  
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')  
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -642,8 +654,8 @@ if compare == False:
         plt.legend([f'TPR Classifier: epoch {at_epoch}\n{wm_text}', f'FPR Classifier: epoch {at_epoch}\n{wm_text}',f'TPR DeepCSV', f'FPR DeepCSV'],title='C vs L',loc='upper right',fontsize=22,title_fontsize=24)
         plt.grid(which='minor', alpha=0.9)
         plt.grid(which='major', alpha=1, color='black')
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)  
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')  
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)  
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/new_roc_CvL_thresholds_weighting_method{weighting_method}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')  
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')
@@ -1205,6 +1217,9 @@ else:
         this_line = linestyles[i]
         this_colour = used_colours[i]
         this_legtext = individual_legend[i]
+        
+        if compare == False and force_compare == True:
+            this_colour = 'red'
 
         # .........................................................................................................
         #                                             ROC & AUC
@@ -1217,16 +1232,16 @@ else:
                 continue
             if log_axis:
                 legloc = 'upper left'
-                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             else:
                 legloc = 'lower right'
-                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             print(f"auc for b-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour)                        
+                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)                        
                 else:
-                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour)
+                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)
             legtitle = 'ROC b tagging'+addition_leg_text
         elif outdisc == 'bb':
             fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==1, torch.ones(len_test), torch.zeros(len_test)),matching_predictions[:,1])
@@ -1236,16 +1251,16 @@ else:
                 continue
             if log_axis:
                 legloc = 'upper left'
-                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             else:
                 legloc = 'lower right'
-                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             print(f"auc for bb-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour)                        
+                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)                        
                 else:
-                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour)
+                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)
             legtitle = 'ROC bb tagging'+addition_leg_text
         elif outdisc == 'c':
             fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==2, torch.ones(len_test), torch.zeros(len_test)),matching_predictions[:,2])
@@ -1255,31 +1270,31 @@ else:
                 continue
             if log_axis:
                 legloc = 'lower right'
-                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             else:
                 legloc = 'lower right'
-                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             print(f"auc for c-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour)                        
+                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)                        
                 else:
-                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour)
+                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)
             legtitle = 'ROC c tagging'+addition_leg_text
         elif outdisc == 'udsg':
             fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==3, torch.ones(len_test), torch.zeros(len_test)),matching_predictions[:,3])
             customauc = metrics.auc(fpr,tpr)
             if log_axis:
                 legloc = 'lower right'
-                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             else:
                 legloc = 'lower right'
-                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour)                        
+                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)                        
                 else:
-                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour)
+                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)
             print(f"auc for udsg-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
             legtitle = 'ROC udsg tagging'+addition_leg_text
         # every discriminator has different properties / different conditions for the computation to work
@@ -1298,15 +1313,17 @@ else:
                 continue
             if log_axis:
                 legloc = 'upper left'
-                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
+                # for proposal with increased line thickness
+                #ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             else:
                 legloc = 'lower right'
-                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour)                        
+                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)                        
                 else:
-                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour)
+                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)
             print(f"auc for bvl-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
             legtitle = 'ROC B vs L'+addition_leg_text
             del actually_matching_targets
@@ -1325,15 +1342,15 @@ else:
                 continue
             if log_axis:
                 legloc = 'upper left'
-                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             else:
                 legloc = 'lower right'
-                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour)                        
+                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)                        
                 else:
-                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour)
+                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)
             print(f"auc for bvc-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
             legtitle = 'ROC B vs C'+addition_leg_text
             del actually_matching_targets
@@ -1352,15 +1369,15 @@ else:
                 continue
             if log_axis:
                 legloc = 'lower right'
-                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             else:
                 legloc = 'lower right'
-                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour)                        
+                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)                        
                 else:
-                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour)
+                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)
             print(f"auc for cvb-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
             legtitle = 'ROC C vs B'+addition_leg_text
             del actually_matching_targets
@@ -1379,15 +1396,15 @@ else:
                 continue
             if log_axis:
                 legloc = 'lower right'
-                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(tpr,fpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             else:
                 legloc = 'lower right'
-                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour)
+                ax.plot(fpr,tpr,label=f'{this_legtext}AUC = {customauc:.4f}', linestyle=this_line, color=this_colour,linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour)                        
+                    ax2.plot(tpr,fpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)                        
                 else:
-                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour)
+                    ax2.plot(fpr,tpr, linestyle=this_line, color=this_colour,linewidth=line_thickness)
             print(f"auc for cvl-tagging epoch {epochs[i]} {wm_text}, setup {setups[i]}: {customauc}")
             legtitle = 'ROC C vs L'+addition_leg_text
             del actually_matching_targets
@@ -1399,105 +1416,105 @@ else:
             fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==0, torch.ones(len_test), torch.zeros(len_test)),DeepCSV_testset[:,0])
             deepcsvauc = metrics.auc(fpr,tpr)
             if log_axis:
-                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             else:
-                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr,color='k')
+                    ax2.plot(tpr,fpr,color='k',linewidth=line_thickness)
                 else:
-                    ax2.plot(fpr,tpr,color='k')
+                    ax2.plot(fpr,tpr,color='k',linewidth=line_thickness)
             print(f"auc for b-tagging DeepCSV: {deepcsvauc}")
         if outdisc == 'bb':
             fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==1, torch.ones(len_test), torch.zeros(len_test)),DeepCSV_testset[:,1])
             deepcsvauc = metrics.auc(fpr,tpr)
             if log_axis:
-                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             else:
-                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr,color='k')
+                    ax2.plot(tpr,fpr,color='k',linewidth=line_thickness)
                 else:
-                    ax2.plot(fpr,tpr,color='k')
+                    ax2.plot(fpr,tpr,color='k',linewidth=line_thickness)
             print(f"auc for bb-tagging DeepCSV: {deepcsvauc}")
         if outdisc == 'c':
             fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==2, torch.ones(len_test), torch.zeros(len_test)),DeepCSV_testset[:,2])
             deepcsvauc = metrics.auc(fpr,tpr)
             if log_axis:
-                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             else:
-                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr,color='k')
+                    ax2.plot(tpr,fpr,color='k',linewidth=line_thickness)
                 else:
-                    ax2.plot(fpr,tpr,color='k')
+                    ax2.plot(fpr,tpr,color='k',linewidth=line_thickness)
             print(f"auc for c-tagging DeepCSV: {deepcsvauc}")
         if outdisc == 'udsg':
             fpr,tpr,_ = metrics.roc_curve(torch.where(matching_targets==3, torch.ones(len_test), torch.zeros(len_test)),DeepCSV_testset[:,3])
             deepcsvauc = metrics.auc(fpr,tpr)
             if log_axis:
-                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             else:
-                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr,color='k')
+                    ax2.plot(tpr,fpr,color='k',linewidth=line_thickness)
                 else:
-                    ax2.plot(fpr,tpr,color='k')
+                    ax2.plot(fpr,tpr,color='k',linewidth=line_thickness)
             print(f"auc for udsg-tagging DeepCSV: {deepcsvauc}")
         if outdisc == 'BvL':
             fpr,tpr,_ = metrics.roc_curve((matching_DeepCSV_targets==0) | (matching_DeepCSV_targets==1),(matching_DeepCSV[:,0]+matching_DeepCSV[:,1])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,3]))
             deepcsvauc = metrics.auc(fpr,tpr)
             if log_axis:
-                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             else:
-                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr,color='k')
+                    ax2.plot(tpr,fpr,color='k',linewidth=line_thickness)
                 else:
-                    ax2.plot(fpr,tpr,color='k')
+                    ax2.plot(fpr,tpr,color='k',linewidth=line_thickness)
             print(f"auc for bvl-tagging DeepCSV: {deepcsvauc}")
         if outdisc == 'BvC':
             fpr,tpr,_ = metrics.roc_curve((matching_DeepCSV_targets==0) | (matching_DeepCSV_targets==1),(matching_DeepCSV[:,0]+matching_DeepCSV[:,1])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]))
             deepcsvauc = metrics.auc(fpr,tpr)
             if log_axis:
-                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             else:
-                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr,color='k')
+                    ax2.plot(tpr,fpr,color='k',linewidth=line_thickness)
                 else:
-                    ax2.plot(fpr,tpr,color='k')
+                    ax2.plot(fpr,tpr,color='k',linewidth=line_thickness)
             print(f"auc for bvc-tagging DeepCSV: {deepcsvauc}")
         if outdisc == 'CvB':
             fpr,tpr,_ = metrics.roc_curve(matching_DeepCSV_targets==2,(matching_DeepCSV[:,2])/(matching_DeepCSV[:,0]+matching_DeepCSV[:,1]+matching_DeepCSV[:,2]))
             deepcsvauc = metrics.auc(fpr,tpr)
             if log_axis:
-                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             else:
-                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr,color='k')
+                    ax2.plot(tpr,fpr,color='k',linewidth=line_thickness)
                 else:
-                    ax2.plot(fpr,tpr,color='k')
+                    ax2.plot(fpr,tpr,color='k',linewidth=line_thickness)
             print(f"auc for cvb-tagging DeepCSV: {deepcsvauc}")
         if outdisc == 'CvL':
             fpr,tpr,_ = metrics.roc_curve(matching_DeepCSV_targets==2,(matching_DeepCSV[:,2])/(matching_DeepCSV[:,2]+matching_DeepCSV[:,3]))
             deepcsvauc = metrics.auc(fpr,tpr)
             if log_axis:
-                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(tpr,fpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             else:
-                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k')
+                ax.plot(fpr,tpr,label=f'DeepCSV, AUC = {deepcsvauc:.4f}',color='k',linewidth=line_thickness)
             if add_axis:
                 if log_axis:
-                    ax2.plot(tpr,fpr,color='k')
+                    ax2.plot(tpr,fpr,color='k',linewidth=line_thickness)
                 else:
-                    ax2.plot(fpr,tpr,color='k')
+                    ax2.plot(fpr,tpr,color='k',linewidth=line_thickness)
             print(f"auc for cvl-tagging DeepCSV: {deepcsvauc}")
     del fpr
     del tpr
@@ -1508,6 +1525,8 @@ else:
         # .........................................................................................................
         #                                             style some more & save
         # .........................................................................................................
+        # for proposal: no additional title for the legend ( just some technical details for us :-) )
+        #legtitle = ''
         leg = ax.legend(title=legtitle,loc=legloc,fontsize=20,title_fontsize=23)
         if 'right' in legloc:
             aligned = 'right'
@@ -1522,7 +1541,10 @@ else:
 
         if FGSM_setup != -1:
             if log_axis:
-                ax.text(0,1.5e-3,fgsm_setup_text, fontsize=16)
+                if add_axis == False:
+                    ax.text(0,1.5e-3,fgsm_setup_text, fontsize=16)
+                else:
+                    ax.text(0,1e-2,fgsm_setup_text, fontsize=16)
             else:
                 ax.text(0,0,fgsm_setup_text, fontsize=16)
 
@@ -1542,9 +1564,9 @@ else:
         at_epoch = list(dict.fromkeys(epochs))
         compare_setup = list(dict.fromkeys(setups))
         fgsm_setup_text = '' if fgsm_setup_text=='' else f'_FGSM{FGSM_setup}.'
-        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/compare/roc_{outdisc}_weighting_method{wmets}_at_epoch_{epochs}_setup_{setups}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}.png', bbox_inches='tight', dpi=400)
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/compare_new/roc_{outdisc}/{weighting_method}_e{at_epoch}_s{compare_setup}{dcsv_text}{log_axis_text}{add_axis_text}{fgsm_setup_text}_{len_test}_{NUM_DATASETS}_{default}_{n_samples}.svg', bbox_inches='tight')
-        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/compare_new/roc_{outdisc}/{weighting_method}_e{at_epoch}_s{compare_setup}{dcsv_text}{log_axis_text}{add_axis_text}{fgsm_setup_text}_{len_test}_{NUM_DATASETS}_{default}_{n_samples}.pdf', bbox_inches='tight')
+        #fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/compare/roc_{outdisc}_weighting_method{wmets}_at_epoch_{epochs}_setup_{setups}_{len_test}_jets_training_{NUM_DATASETS}_{default}_{n_samples}_v2.png', bbox_inches='tight', dpi=400)
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/compare_new/roc_{outdisc}/{weighting_method}_e{at_epoch}_s{compare_setup}{dcsv_text}{log_axis_text}{add_axis_text}{fgsm_setup_text}_{len_test}_{NUM_DATASETS}_{default}_{n_samples}_v2.svg', bbox_inches='tight')
+        fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/roc_curves/compare_new/roc_{outdisc}/{weighting_method}_e{at_epoch}_s{compare_setup}{dcsv_text}{log_axis_text}{add_axis_text}{fgsm_setup_text}_{len_test}_{NUM_DATASETS}_{default}_{n_samples}_v2.pdf', bbox_inches='tight')
         plt.show(block=False)
         time.sleep(5)
         plt.close('all')

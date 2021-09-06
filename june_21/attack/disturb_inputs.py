@@ -29,7 +29,12 @@ def apply_noise(sample, magn=1e-2,offset=[0], default=0.001, dev="cpu"):
 
 
         for i in range(67):
-            defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) - defaults_per_variable[i]) < 0.001   # "floating point error" --> allow some error margin
+            if i in [41,42,43,44,45,46,47,49,50,51,52,53,54,55]:
+                defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) - defaults_per_variable[i]) < 2   # "floating point error" --> allow some error margin
+            elif i in [19,20,21]:
+                defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) - defaults_per_variable[i]) < 0.4   # "floating point error" --> allow some error margin
+            else:
+                defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) - defaults_per_variable[i]) < 0.001   # "floating point error" --> allow some error margin
             if np.sum(defaults) != 0:
                 xadv[:,i][defaults] = sample[:,i][defaults]
 
@@ -80,7 +85,12 @@ def fgsm_attack(epsilon=1e-2,sample=None,targets=None,thismodel=None,thiscriteri
                 xadv[:,variable] = sample[:,variable]
 
             for i in range(67):
-                defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) - defaults_per_variable[i]) < 0.001   # "floating point error" --> allow some error margin
+                if i in [41,42,43,44,45,46,47,49,50,51,52,53,54,55]:
+                    defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) - defaults_per_variable[i]) < 2   # "floating point error" --> allow some error margin
+                elif i in [19,20,21]:
+                    defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) - defaults_per_variable[i]) < 0.4   # "floating point error" --> allow some error margin
+                else:
+                    defaults = abs(scalers[i].inverse_transform(sample[:,i].cpu()) - defaults_per_variable[i]) < 0.001   # "floating point error" --> allow some error margin
                 if np.sum(defaults) != 0:
                     xadv[:,i][defaults] = sample[:,i][defaults]
         return xadv.detach()

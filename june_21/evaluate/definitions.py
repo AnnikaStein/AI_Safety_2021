@@ -75,7 +75,7 @@ display_names = ['Jet $\eta$',
                 'Track $\eta_{rel}$ [0]','Track $\eta_{rel}$ [1]','Track $\eta_{rel}$ [2]','Track $\eta_{rel}$ [3]',
                 'Track Jet Dist Val [0]','Track Jet Dist Val [1]','Track Jet Dist Val [2]','Track Jet Dist Val [3]','Track Jet Dist Val [4]','Track Jet Dist Val [5]',
                 'Track Jet $p_T$',
-                'Track $p_T$ Ratio [0]','Track $p_T$ Ratio [1]','Track $p_T$ Ratio [2]','Track $p_T$ Ratio [3]','Track $p_T$ Ratio [4]','Track $p_T$ Ratio [5]',
+                'Track $p_{T,rel}$ Ratio [0]','Track $p_{T,rel}$ Ratio [1]','Track $p_{T,rel}$ Ratio [2]','Track $p_{T,rel}$ Ratio [3]','Track $p_{T,rel}$ Ratio [4]','Track $p_{T,rel}$ Ratio [5]',
                 'Track $p_{T,rel}$ [0]','Track $p_{T,rel}$ [1]','Track $p_{T,rel}$ [2]','Track $p_{T,rel}$ [3]','Track $p_{T,rel}$ [4]','Track $p_{T,rel}$ [5]',
                 'Track SIP 2D Sig Above Charm',
                 'Track SIP 2D Sig [0]','Track SIP 2D Sig [1]','Track SIP 2D Sig [2]','Track SIP 2D Sig [3]','Track SIP 2D Sig [4]','Track SIP 2D Sig [5]',
@@ -87,8 +87,14 @@ display_names = ['Jet $\eta$',
                 'Vertex Category','Vertex Energy Ratio','Vertex Jet $\Delta R$','Vertex Mass',
                 'Jet N Secondary Vertices','Jet N Selected Tracks','Jet N Tracks $\eta_{rel}$','Vertex N Tracks',]
 
+jetINDEX = [0,1,28,41,48,49,56,57,58,59,63,64,65] 
+trackINDEX = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,29,30,31,32,33,34,35,36,37,38,39,40,42,43,44,45,46,47,50,51,52,53,54,55,]
+svINDEX = [2,3,4,5,60,61,62,66]
+
+interger_variables = [59,63,64,65,66]
+
 manual_ranges = [[None,None],
-                [None,250],
+                [0,250],
                 [-0.1,100],
                 [-0.1,2.6],
                 [-0.1,100],
@@ -115,7 +121,7 @@ manual_ranges = [[None,None],
                 [-0.08,0.0025],
                 [-0.08,0.0025],
                 [-0.08,0.0025],
-                [None,250],
+                [0,250],
                 [-0.001,0.301],
                 [-0.001,0.301],
                 [-0.001,0.301],
@@ -154,3 +160,275 @@ manual_ranges = [[None,None],
                 [-0.5,None],
                 [-0.5,None],
                 [-0.5,None],]
+
+inputVar_units = ['',
+ 'GeV',
+ '',
+ 'cm',
+ '',
+ 'cm',
+ 'cm',
+ 'cm',
+ 'cm',
+ 'cm',
+ 'cm',
+ 'cm',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ 'cm',
+ 'cm',
+ 'cm',
+ 'cm',
+ 'cm',
+ 'cm',
+ 'GeV',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ 'GeV',
+ 'GeV',
+ 'GeV',
+ 'GeV',
+ 'GeV',
+ 'GeV',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ 'cm',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ '',
+ 'cm',
+ '',
+ '',
+ '',
+ '',
+ '',
+ 'GeV',
+ '',
+ '',
+ '',
+ '']
+
+format_unit = ['2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f',
+ '2f']
+
+format_unit_digits = [2, #
+ 0,  #
+ 1,  # 'Jet_DeepCSV_flightDist
+ 3,  # 'Jet_DeepCSV_flightDist
+ 1,  # 'Jet_DeepCSV_flightDist
+ 2,  # 'Jet_DeepCSV_flightDist
+ 3,  # 'Jet_DeepCSV_trackDecay
+ 3,  # 'Jet_DeepCSV_trackDecay
+ 3,  # 'Jet_DeepCSV_trackDecay
+ 3,  # 'Jet_DeepCSV_trackDecay
+ 3,  # 'Jet_DeepCSV_trackDecay
+ 3,  # 'Jet_DeepCSV_trackDecay
+ 3,  # 'Jet_DeepCSV_trackDelta
+ 3,  # 'Jet_DeepCSV_trackDelta
+ 3,  # 'Jet_DeepCSV_trackDelta
+ 3,  # 'Jet_DeepCSV_trackDelta
+ 3,  # 'Jet_DeepCSV_trackDelta
+ 3,  # 'Jet_DeepCSV_trackDelta
+ 2,  # 'Jet_DeepCSV_trackEtaRe
+ 2,  # 'Jet_DeepCSV_trackEtaRe
+ 2,  # 'Jet_DeepCSV_trackEtaRe
+ 2,  # 'Jet_DeepCSV_trackEtaRe
+ 4,  # 'Jet_DeepCSV_trackJetDi
+ 4,  # 'Jet_DeepCSV_trackJetDi
+ 4,  # 'Jet_DeepCSV_trackJetDi
+ 4,  # 'Jet_DeepCSV_trackJetDi
+ 4,  # 'Jet_DeepCSV_trackJetDi
+ 4,  # 'Jet_DeepCSV_trackJetDi
+ 1,  # 'Jet_DeepCSV_trackJetPt
+ 3,  # 'Jet_DeepCSV_trackPtRat
+ 3,  # 'Jet_DeepCSV_trackPtRat
+ 3,  # 'Jet_DeepCSV_trackPtRat
+ 3,  # 'Jet_DeepCSV_trackPtRat
+ 3,  # 'Jet_DeepCSV_trackPtRat
+ 3,  # 'Jet_DeepCSV_trackPtRat
+ 2,  # 'Jet_DeepCSV_trackPtRel
+ 2,  # 'Jet_DeepCSV_trackPtRel
+ 2,  # 'Jet_DeepCSV_trackPtRel
+ 2,  # 'Jet_DeepCSV_trackPtRel
+ 2,  # 'Jet_DeepCSV_trackPtRel
+ 2,  # 'Jet_DeepCSV_trackPtRel
+ 2,  # 'Jet_DeepCSV_trackSip2d
+ 2,  # 'Jet_DeepCSV_trackSip2d
+ 2,  # 'Jet_DeepCSV_trackSip2d
+ 2,  # 'Jet_DeepCSV_trackSip2d
+ 2,  # 'Jet_DeepCSV_trackSip2d
+ 2,  # 'Jet_DeepCSV_trackSip2d
+ 2,  # 'Jet_DeepCSV_trackSip2d
+ 3,  # 'Jet_DeepCSV_trackSip2d
+ 2,  # 'Jet_DeepCSV_trackSip3d
+ 2,  # 'Jet_DeepCSV_trackSip3d
+ 2,  # 'Jet_DeepCSV_trackSip3d
+ 2,  # 'Jet_DeepCSV_trackSip3d
+ 2,  # 'Jet_DeepCSV_trackSip3d
+ 2,  # 'Jet_DeepCSV_trackSip3d
+ 2,  # 'Jet_DeepCSV_trackSip3d
+ 3,  # 'Jet_DeepCSV_trackSip3d
+ 3,  # 'Jet_DeepCSV_trackSumJe
+ 2,  # 'Jet_DeepCSV_trackSumJe
+ 2,  # 'Jet_DeepCSV_vertexCate
+ 2,  # 'Jet_DeepCSV_vertexEner
+ 3,  # 'Jet_DeepCSV_vertexJetD
+ 2,  # 'Jet_DeepCSV_vertexMass
+ 2,  # 'Jet_DeepCSV_jetNSecond
+ 2,  # 'Jet_DeepCSV_jetNSelect
+ 2,  # 'Jet_DeepCSV_jetNTracks
+ 2]  # 'Jet_DeepCSV_vertexNTra
+
+ylabel_text = ['Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Jets',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Tracks',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets',
+ 'Jets']
