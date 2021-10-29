@@ -1007,11 +1007,11 @@ with torch.no_grad():
         #ax3.legend(loc='upper right',title=f'Outputs',ncol=1,fontsize=18,title_fontsize=19,facecolor='k', framealpha=0.3)
         #ax2.legend(loc='upper right',ncol=1,fontsize=18,facecolor='k', framealpha=0.3)
         # gamma25
-        #ax2.legend(loc='upper right',ncol=1,fontsize=18)
-        #ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
+        ax2.legend(loc='upper right',ncol=1,fontsize=18)
+        ax1.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
         # gamma2
-        ax1.legend(loc='upper center',ncol=1,fontsize=18)
-        ax2.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
+        #ax1.legend(loc='upper center',ncol=1,fontsize=18)
+        #ax2.get_legend().remove(), ax3.get_legend().remove(), ax4.get_legend().remove()
 
         ax1.set_ylim(bottom=0, auto=True)
         ax2.set_ylim(bottom=0, auto=True)
@@ -1033,9 +1033,9 @@ with torch.no_grad():
         #ax3.ticklabel_format(scilimits=(-5,5))
         #ax4.ticklabel_format(scilimits=(-5,5))
         # for gamma25
-        #ax1.text(0.25,1e6,f'{wm_text}, epoch {at_epoch}',fontsize=15)
+        ax1.text(0.25,1e6,f'{wm_text}, epoch {at_epoch}',fontsize=15)
         # for gamma2
-        ax2.text(0.33,5e6,f'{wm_text}, epoch {at_epoch}',fontsize=15)
+        #ax2.text(0.33,5e6,f'{wm_text}, epoch {at_epoch}',fontsize=15)
         #fig.suptitle(f'Classifier and DeepCSV outputs, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')
@@ -1210,11 +1210,11 @@ with torch.no_grad():
         dcsv_ax3 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','bvc','cvl'),ax=ax3,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         dcsv_ax4 = hist.plot1d(discriminatorHist['DeepCSV'].sum('flavour','bvl','bvc','cvb'),ax=ax4,clear=False,fill_opts={'alpha':.7,'facecolor':'orange'})
         # gamma25
-        #ax1.legend(loc=(0.67,0.7),ncol=1,fontsize=13.5)
-        #ax3.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
-        # gamma2
-        ax1.legend(loc='upper center',ncol=1,fontsize=13.5)
+        ax1.legend(loc=(0.67,0.7),ncol=1,fontsize=13.5)
         ax3.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
+        # gamma2
+        #ax1.legend(loc='upper center',ncol=1,fontsize=13.5)
+        #ax3.get_legend().remove(), ax2.get_legend().remove(), ax4.get_legend().remove()
 
         ax1.set_ylim(bottom=0, auto=True)
         ax2.set_ylim(bottom=0, auto=True)
@@ -1238,9 +1238,9 @@ with torch.no_grad():
         # for adversarial training gamma25
         #ax4.text(0.49,5e5,f'{wm_text},\nepoch {at_epoch}',fontsize=14)
         # for basic training gamma25
-        #ax4.text(0.59,5e5,f'{wm_text},\nepoch {at_epoch}',fontsize=14)
+        ax4.text(0.59,5e5,f'{wm_text},\nepoch {at_epoch}',fontsize=14)
         # for basic training gamma2
-        ax2.text(0.33,5e6,f'{wm_text}, epoch {at_epoch}',fontsize=14)
+        #ax2.text(0.33,5e6,f'{wm_text}, epoch {at_epoch}',fontsize=14)
         #fig.suptitle(f'Classifier and DeepCSV discriminators, {wm_text}\nAfter {at_epoch} epochs, evaluated on {len_test} jets, default {default}')
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/discriminators_versus_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.png', bbox_inches='tight', dpi=400)
         fig.savefig(f'/home/um106329/aisafety/june_21/evaluate/discriminator_shapes/shapes_new/discriminators_versus_weighting_method{weighting_method}_default_{default}_at_epoch_{at_epoch}_{len_test}_jets_training_{NUM_DATASETS}_files_{n_samples}_samples_minieval_{do_minimal_eval}.pdf', bbox_inches='tight')

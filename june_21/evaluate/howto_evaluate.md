@@ -19,3 +19,9 @@ just 0 for example
 ```bash
 python submit_eval_inputs.py -v 0,0 -a fgsm -r yes -pa '0.01,0.02' -f 278 -p 200 -w _ptetaflavloss_focalloss_gamma25.0_adv_tr_eps0.01 -d 0.001 -j -1 -me no
 ```
+just 4 for example
+```bash
+python submit_eval_inputs.py -v 4,4 -a noise -r yes -pa '0.01,0.02' -f 278 -p 200 -w _ptetaflavloss_focalloss_gamma25.0 -d 0.001 -j -1 -me no
+python submit_eval_inputs.py -v 4,4 -a fgsm -r yes -pa '0.01,0.02' -f 278 -p 200 -w _ptetaflavloss_focalloss_gamma25.0 -d 0.001 -j -1 -me no
+python submit_eval_inputs.py -v 4,4 -a fgsm -r yes -pa '0.01,0.02' -f 278 -p 200 -w _ptetaflavloss_focalloss_gamma25.0_adv_tr_eps0.01 -d 0.001 -j -1 -me no
+```
